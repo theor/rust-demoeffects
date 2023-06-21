@@ -3,62 +3,102 @@ import typescriptLogo from './typescript.svg'
 import viteLogo from '/vite.svg'
 import { setupCounter } from './counter.ts'
 
-import init, {compute} from '../pkg/rillus.js'
-init().then(() => {
-  console.log(compute(2));
-});
+import init, { compute, compute_descriptor } from '../pkg/rillus.js'
 
-type Type = "number";
+type Type = string;//"number";
+
+// type Function = [Type, [Param]];
+
+// const Compute: Function = ["number", [ {name:"i", type: "number"}]];
+
 interface Param {
+  value_type: string;
   name: string;
-  type: Type;
-};
+}
+interface Function {
+  return_type: string;
+  params: Param[];
+}
 
-type Function = [Type, [Param]];
-
-const Compute: Function = ["number", [ {name:"i", type: "number"}]];
-
-type Editor<T> = (p:Param, v: any) => T;
-type Display<T> = (t:Type, v: any) => T;
+type Editor<T> = (t: T | undefined, p: Param, v: any, update: Update) => T;
+type Update = () => void;
 
 class Context<T> {
   editors: Map<Type, Editor<T>>;
-  displays: Map<Type, Display<T>>;
 
-  constructor(){
+  constructor() {
     this.editors = new Map();
-    this.displays = new Map();
   }
 
-  getEditor(t:Type): Editor<T> | undefined  { return this.editors.get(t); }
-  getDisplay(t:Type): Display<T> | undefined  { return this.displays.get(t); }
-  registerEditor(t:Type, e:Editor<T>)  { this.editors.set(t, e); }
-  registerDisplay(t:Type, d:Display<T>)  { this.displays.set(t, d); }
+  getEditor(t: Type): Editor<T> | undefined { return this.editors.get(t); }
+  registerEditor(t: Type, e: Editor<T>) { this.editors.set(t, e); }
 };
 
-const c = new Context<HTMLElement>();
+class RawHtmlContext extends Context<HTMLElement> {
+  elements: HTMLElement[] = [];
+  desc?: Function;
+  update() {
+    console.log("update", this.desc);
+    let i = 0;
+    let args = [];
+    for (const p of this.desc!.params) {
+      let elt = this.elements[i++];
+      const e = this.getEditor(p.value_type)!;
+      const a = (elt as any).valueAsNumber;
+      e(elt, p, a, () => this.update());
+      args.push(a);
+    }
+    const res = compute.call(null, ...args);
+    console.log("res", res)
+    super.getEditor(this.desc!.return_type)!(this.elements[i++], { value_type: this.desc!.return_type, name: 'return' }, res,  () => this.update())
+  }
+  create(app: HTMLDivElement, desc: Function) {
+    this.desc = desc;
+    // if(!(desc instanceof Function))
+    //   throw new Error('Method not implemented.')
 
-c.registerEditor("number", (p, v) => {
- let i = document.createElement("input");
- i.type = "number";
+    for (const p of desc.params) {
+      const e = this.getEditor(p.value_type)!;
+      // console.log(p, e);
+      if (e) {
+        const elt= e(undefined, p, 0,  () => this.update());
+        app.appendChild(elt);
+        this.elements.push(elt);
+      }
+
+    }
+    const elt = super.getEditor(desc.return_type)!(undefined, { value_type: desc.return_type, name: 'return' }, 0,  () => this.update());
+    
+    this.elements.push(elt);
+    app.appendChild(elt);
+  }
+}
+
+const c = new RawHtmlContext();
+
+c.registerEditor("number", (e, p, v, update) => {
+
+  let i: HTMLInputElement | undefined = e as HTMLInputElement | undefined;
+  if (!i) {
+    i = document.createElement("input");
+    i.type = "number";
+    i.addEventListener("change", (e: Event): any => update());
+    e = i;
+  }
   i.valueAsNumber = v as number;
-  i.addEventListener("change", (e:Event):any => console.log(e));
- return i;
+
+  return i;
 });
 
-c.registerDisplay("number", (t, v) => {
-  const p=  document.createElement("p");
-  p.innerHTML = `${v}`;
-  return p;
-})
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
+init().then(() => {
+  const desc = compute_descriptor();
+  console.log(desc);
+  c.create(app, desc);
+});
 
-for (const p of Compute[1]) {
-  app.appendChild(c.getEditor(p.type)!(p, 0));
-  
-}
-app.appendChild(c.getDisplay(Compute[0])!(Compute[0], 0));
+
 //.innerHTML = `
 //   <div>
 //     <a href="https://vitejs.dev" target="_blank">
