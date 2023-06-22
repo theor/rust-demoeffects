@@ -3,7 +3,7 @@ import typescriptLogo from './typescript.svg'
 import viteLogo from '/vite.svg'
 import { setupCounter } from './counter.ts'
 
-import init, { compute, compute_descriptor } from '../pkg/rillus.js'
+import init, { compute, compute_desc } from '../pkg/rillus.js'
 
 type Type = string;//"number";
 
@@ -23,20 +23,31 @@ interface Function {
 type Editor<T> = (t: T | undefined, p: Param, v: any, update: Update) => T;
 type Update = () => void;
 
-class Context<T> {
+abstract class Context<T> {
   editors: Map<Type, Editor<T>>;
 
   constructor() {
     this.editors = new Map();
   }
 
-  getEditor(t: Type): Editor<T> | undefined { return this.editors.get(t); }
+  getEditor(t: Type): Editor<T> | undefined { return this.editors.get(t) ?? this.defaultEditor(); }
   registerEditor(t: Type, e: Editor<T>) { this.editors.set(t, e); }
+  abstract defaultEditor(): Editor<T>;
 };
 
 class RawHtmlContext extends Context<HTMLElement> {
   elements: HTMLElement[] = [];
   desc?: Function;
+
+  defaultEditor(): Editor<HTMLElement> {
+    return (e,p,v,u) => {
+      let i: HTMLParagraphElement | undefined = e as HTMLParagraphElement | undefined;
+      if(!i)
+      i =  document.createElement("p");
+      i.innerText = v;
+      return i;
+    };
+  }
   update() {
     console.log("update", this.desc);
     let i = 0;
@@ -76,7 +87,10 @@ class RawHtmlContext extends Context<HTMLElement> {
 
 const c = new RawHtmlContext();
 
-c.registerEditor("number", (e, p, v, update) => {
+function wrap(x: HTMLElement, label:string) {
+  
+}
+c.registerEditor("i32", (e, p, v, update) => {
 
   let i: HTMLInputElement | undefined = e as HTMLInputElement | undefined;
   if (!i) {
@@ -93,28 +107,8 @@ c.registerEditor("number", (e, p, v, update) => {
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 init().then(() => {
-  const desc = compute_descriptor();
+  const desc = compute_desc();
   console.log(desc);
   c.create(app, desc);
 });
 
-
-//.innerHTML = `
-//   <div>
-//     <a href="https://vitejs.dev" target="_blank">
-//       <img src="${viteLogo}" class="logo" alt="Vite logo" />
-//     </a>
-//     <a href="https://www.typescriptlang.org/" target="_blank">
-//       <img src="${typescriptLogo}" class="logo vanilla" alt="TypeScript logo" />
-//     </a>
-//     <h1>Vite + TypeScript</h1>
-//     <div class="card">
-//       <button id="counter" type="button"></button>
-//     </div>
-//     <p class="read-the-docs">
-//       Click on the Vite and TypeScript logos to learn more
-//     </p>
-//   </div>
-// `
-
-// setupCounter(document.querySelector<HTMLButtonElement>('#counter')!)

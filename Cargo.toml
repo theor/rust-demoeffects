@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["rillus"]
+members = ["rillus", "rillus-macros"]
 
 [profile.release]
 # Tell `rustc` to optimize for small code size.

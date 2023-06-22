@@ -86,11 +86,21 @@ name = "rillus"
 version = "0.0.0"
 dependencies = [
  "console_error_panic_hook",
+ "proc-macro2",
+ "rillus-macros",
  "serde",
  "serde-wasm-bindgen",
  "wasm-bindgen",
  "wasm-bindgen-test",
  "wee_alloc",
+]
+
+[[package]]
+name = "rillus-macros"
+version = "0.0.0"
+dependencies = [
+ "quote",
+ "syn",
 ]
 
 [[package]]
