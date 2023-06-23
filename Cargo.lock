@@ -104,6 +104,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "sample-rust"
+version = "0.0.0"
+dependencies = [
+ "console_error_panic_hook",
+ "rillus",
+ "wasm-bindgen",
+ "wasm-bindgen-test",
+ "wee_alloc",
+]
+
+[[package]]
 name = "scoped-tls"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

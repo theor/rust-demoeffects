@@ -1,6 +1,6 @@
 use proc_macro::{self, TokenStream};
 use quote::{format_ident, quote, ToTokens};
-use syn::{parse::{Parse, self}, parse_macro_input, parse_quote, token::Token, FnArg, PatType, ReturnType};
+use syn::{parse_quote, FnArg, PatType, ReturnType};
 
 #[proc_macro_attribute]
 pub fn reflect(attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -18,7 +18,7 @@ pub fn reflect(attr: TokenStream, item: TokenStream) -> TokenStream {
                 let param_ty = format!("{}", ty.to_token_stream());
                 eprintln!("Parsed: {} {}", pat.to_token_stream(), ty.to_token_stream());
                 args.push(parse_quote! {
-                Param {
+                    ::rillus::Param {
                     name: #param_name,
                     value_type: #param_ty,
                 }
@@ -40,15 +40,18 @@ pub fn reflect(attr: TokenStream, item: TokenStream) -> TokenStream {
     // proc_macro::TokenStream::from(p.to_token_stream())
     // let args2 = args.iter().joi
     let res = quote! {
-        #[wasm_bindgen]
-        pub fn #name() ->  wasm_bindgen::JsValue {
-            serde_wasm_bindgen::to_value(&Function {
-                return_type: #ret,
+        #[::rillus::wasm_bindgen]
+        pub fn #name() -> ::rillus::JsValue {
+            ::rillus::to_value(&::rillus::Function {
+                return_type: ::rillus::Param {
+                    name:  "ret",
+                    value_type: #ret,
+                },
                 params: vec![ #(#args),* ],
             }).unwrap()
         }
 
-        #[wasm_bindgen]
+        #[::rillus::wasm_bindgen]
         #p
     };
     eprintln!("OUTPUT:\n{}", &res);
