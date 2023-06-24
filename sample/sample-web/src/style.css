@@ -98,13 +98,30 @@ button:focus-visible {
 
 
 #app {
+  /* width: 80vw; */
+  height: 400px;
   display: flex;
   flex-direction: column;
 }
 
+#app > div > div.tp  {
+  height: 100%;
+  /* flex: 1 1; */
+}
+/* #app > div > div.tp > *  {
+  height: 100%;
+} */
+
+#app > div > div {
+  width: 400px;
+  height: 400px;
+  /* flex: 1 0; */
+  /* height: 20vw; */
+}
 #app > div {
-  margin: 20px;
+  /* width: 100%; */
+  margin-bottom: 20px;
   border: solid 1px grey;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
 }

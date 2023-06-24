@@ -1,6 +1,6 @@
 import './style.css'
 
-import init, { Kind, TestStruct, compute, compute_desc,  svg_func } from '../pkg/sample_rust.js'
+import init, { Kind, compute, compute_desc, do_setup, svg_test, svg_test_desc, } from '../pkg/sample_rust.js'
 import { Context, Editor, Function, Param } from '../../../rillus-web/src/main.js';
 import { Pane, InputParams, InputBindingApi } from 'tweakpane';
 
@@ -13,7 +13,7 @@ class RawHtmlContext extends Context<HTMLElement> {
     this.container = app;
 
   }
-  defaultEditor(p:Param): Editor<HTMLElement> {
+  defaultEditor(p: Param): Editor<HTMLElement> {
     return (e, p, v, u) => {
       let i: HTMLParagraphElement | undefined = e as HTMLParagraphElement | undefined;
       if (!i)
@@ -93,11 +93,35 @@ class RawHtmlContext extends Context<HTMLElement> {
 // });
 
 
-type Binding = InputBindingApi<unknown,unknown>;
+type Binding = InputBindingApi<unknown, unknown>;
 
-class TweakpaneContext extends Context<Binding> {
+
+function fromEnum<T extends {}>(t: T) {
+  let res: any = {};
+  for (const k in t) {// Object.keys(t)) {
+    if (typeof (t[k]) === 'number')
+      res[k] = t[k];
+    // console.log(k, typeof(k), t[k],typeof(t[k]));
+  }
+  return res;
+}
+class TweakpaneContext<T> extends Context<Binding> {
   pane?: Pane;
-  defaultEditor(p:Param): Editor<Binding> {
+  div: HTMLDivElement;
+  onChange: (ui: T, obj: any) => any;
+  mapData: (data: any) => any;
+  onCreate: (div: HTMLDivElement, pane: Pane, data: any) => T;
+  constructor(div: HTMLDivElement, desc: Function, f: any,
+    onCreate: (div: HTMLDivElement, pane: Pane, data: any) => T,
+    mapData: (data: any) => any,
+    onChange: (ui: T, obj: any) => any) {
+    super(desc, f);
+    this.div = div;
+    this.onCreate = onCreate;
+    this.onChange = onChange;
+    this.mapData = mapData;
+  }
+  defaultEditor(p: Param): Editor<Binding> {
     this.pane!.addBlade({
       view: 'text',
       disabled: true,
@@ -105,28 +129,67 @@ class TweakpaneContext extends Context<Binding> {
     })
     throw new Error('Method not implemented.');
   }
+  // createObject() {
+  //   const o = super.createObject();
+  //   o.p = { x: o.i, y: o.j };
+  //   console.log(o);
+  //   return o;
+  // }
+  // mapObject(o: any) {
+  //   o.i = o.p.x;
+  //   o.j = o.p.y;
+  //   return o;
+  // }
   create() {
     const obj = this.createObject();
-    this.pane = new Pane();
-    // for (const p of this.desc.params) {
-    //   this.pane.addInput(obj, p.name);
-    // }
-    console.log(Kind)
-    this.pane.addInput(obj, 'k', {options: {a:"A", b:"B"}})
+    obj.result = this.f(...Object.values(obj));
+    const container = document.createElement("div");
+    container.className = "tp";
+    this.div.appendChild(container);
+    this.pane = new Pane({ container: container, title: "SVG" });
+    const ui = this.onCreate(this.div, this.pane, obj);
+
     this.pane.on('change', (ev) => {
       console.log('changed: ' + JSON.stringify(ev.value), obj);
+      obj.result = this.f(...Object.values(this.mapData(obj)));
+      this.onChange(ui, obj);
     });
+    this.onChange(ui, obj);
   }
 }
 
 init().then(() => {
-  // const desc = compute_desc();
-  // console.log(desc);
-  // c.create(document.querySelector<HTMLDivElement>('#compute')!, desc, compute);
+  new TweakpaneContext(document.querySelector<HTMLDivElement>('#compute')!,
+    undefined, svg_test,
+    (div, pane, data) => {
 
-  console.log(svg_func);
-const c = new TweakpaneContext(svg_func.desc(), svg_func.func);
+      data.p = {x:data.i, y: data.j};
 
-  c.create();
-  console.log(new TestStruct())
+      pane.addInput(data, 'p', {
+        picker: 'inline',
+        expanded: true,
+        x: {min: 0, max:100},
+        y: {min: 0, max:100},
+      })
+      pane.addInput(data, 'k', { options: fromEnum(Kind) })
+      pane.addMonitor(data, 'result', {
+        multiline: true,
+        lineCount: 5,
+      });
+
+      const output = document.createElement("div");
+      div.appendChild(output);
+      return output;
+    },
+    (data) => {
+      data.i = data.p.x;
+      data.j = data.p.y;
+      return data;
+    },
+    (ui, obj) => {
+      ui.innerHTML = obj.result;
+    },
+  ).create();
+  // new TweakpaneContext(document.querySelector<HTMLDivElement>('#svg')!, svg_test_desc(), svg_test).create();
+  // console.log(new TestStruct())
 });

@@ -39,6 +39,7 @@ export abstract class Context<T> {
     }
     return o;
   }
+  mapObject(o:any) { return o; }
 };
 
 
