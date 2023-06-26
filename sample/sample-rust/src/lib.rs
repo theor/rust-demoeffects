@@ -52,8 +52,10 @@ pub fn number(base: u8, mut index: usize) -> f64 {
 #[wasm_bindgen]
 pub fn halton_demo(step: usize, x: &mut [f64]) {
     let mut j = 0;
-    for i in 0..x.len() {
-        x[i] = number(11, j);
+//    let step = 409;
+    for i in 0..x.len() / 2 {
+        x[i*2] = number(11, j) ;
+        x[i*2+1] = number(7, j) ;
         j += step;
     }
 }
