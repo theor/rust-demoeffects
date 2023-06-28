@@ -125,3 +125,18 @@ button:focus-visible {
   display: flex;
   flex-direction: row;
 }
+
+svg { 
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#render > * {
+  flex: 1;
+}
+canvas {
+  
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
