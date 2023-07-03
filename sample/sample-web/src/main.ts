@@ -237,24 +237,26 @@ init().then(() => {
         buffer: 3,                // Whitespace buffer around a glyph in pixels
         radius: 8,                // How many pixels around the glyph shape to use for encoding distance
         cutoff: 0.25              // How much of the radius (relative) is used for the inside part of the glyph
-    });
-    
-    const glyph = tinySdf.draw('w'); // draw a single character
+      });
+
+      const glyph = tinySdf.draw('z'); // draw a single character
 
       const data = {
         canvas: canvas,
-         ctx: canvas.getContext('2d')!, 
-         x: 0.995, 
-         t: 0,
-         r: 5,
-          b: arrayBuffer, 
-          fireBuffer: fireBuffer,
-           mousePos: [0, 0],
-           glyph: glyph,
+        ctx: canvas.getContext('2d')!,
+        x: 0.995,
+        t: 0,
+        r: 5,
+        b: arrayBuffer,
+        fireBuffer: fireBuffer,
+        mousePos: [0, 0],
+        glyph: glyph,
+        cutoff: 40,
       };
       console.log(glyph)
       pane.addInput(data, "r", { min: 1, max: 50, step: 1 });
       pane.addInput(data, "x", { min: 0.9, max: 1, step: 0.005 });
+      pane.addInput(data, "cutoff", { min: -200, max: 250, step: 1 });
       pane.addMonitor(data, "t");
 
 
@@ -274,33 +276,36 @@ init().then(() => {
       const fb = new Uint8Array(data.fireBuffer);
       const r = data.r;
 
-
-      // circle around mouse pos
-      for (let x = -r; x < r; x++) {
-        for (let y = -r; y < r; y++) {
-          const d =x * x + y * y;
-          if (d <= r * r)
-            fb[Math.min(HEIGHT - 1, Math.max(0, data.mousePos[1] + y)) * WIDTH +
-             ((data.mousePos[0] + x) % WIDTH)] =
-             Math.random() * 255 * ((d/(r)));
-
-        }
-      }
-
       // draw letter
-      const s = [WIDTH/2, HEIGHT/2];
+      const s = [WIDTH / 2, HEIGHT / 2];
       for (let x = 0; x < data.glyph.height; x++) {
         for (let y = 0; y < data.glyph.width; y++) {
           const d = data.glyph.data[y * data.glyph.width + x];
-          const i =  Math.min(HEIGHT - 1, Math.max(0,s[1] + y)) * WIDTH +
-          (s[0] + x) % WIDTH;
-          fb[i] = Math.min(254, Math.max(fb[i],Math.random() * Math.pow(d / 255.0, 5) * 255));
+          if (d > data.cutoff) 
+          {
+            const i = Math.min(HEIGHT - 1, Math.max(0, s[1] + y)) * WIDTH +
+              (s[0] + x) % WIDTH;
+            fb[i] = Math.min(254, Math.max(fb[i], Math.random() * Math.pow(d / 255.0, 5) * 255));
+          }
           // fb[i] +=  Math.random() * Math.pow(d / 255.0, 2) * 255;
         }
       }
 
+      // circle around mouse pos
+      for (let x = -r; x < r; x++) {
+        for (let y = -r; y < r; y++) {
+          const d = x * x + y * y;
+          if (d <= r * r)
+            fb[Math.min(HEIGHT - 1, Math.max(0, data.mousePos[1] + y)) * WIDTH +
+              ((data.mousePos[0] + x) % WIDTH)] =
+              Math.random() * 255 * ((d / (r)));
+
+        }
+      }
+
+
       f(data.x, new Uint8Array(data.b), fb, WIDTH, HEIGHT);
-      
+
       data.ctx.putImageData(b, 0, 0);
     },
     data => {

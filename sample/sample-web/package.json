@@ -6,12 +6,15 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "rust": "cd ../sample-rust && cargo watch -s \"wasm-pack build --release --target web -d \"C:/Users/theor/blog-astro/src/content/blog/lorem-ipsum/pkg\""
   },
   "devDependencies": {
     "@tweakpane/core": "^1.1.9",
+    "micromatch": "^4.0.5",
     "typescript": "^5.0.2",
-    "vite": "^4.3.9"
+    "vite": "^4.3.9",
+    "vite-plugin-watch": "^0.2.0"
   },
   "dependencies": {
     "tweakpane": "^3.1.10"
