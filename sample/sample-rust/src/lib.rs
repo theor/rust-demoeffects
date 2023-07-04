@@ -1,10 +1,12 @@
 use colorsys::Hsl;
 use colorsys::HslRatio;
 use colorsys::Rgb;
+
 // use rillus::reflect;
 use rillus::wasm_bindgen;
 use web_sys::Element;
 
+mod fire;
 mod utils;
 
 // #[reflect]
@@ -66,6 +68,7 @@ pub fn halton_demo(step: usize, x: &mut [f64]) {
     }
 }
 
+#[inline(always)]
 fn set<'a, T>(b: &mut [u8], i: usize, c: &'a T)
 where
     Rgb: From<&'a T>,
@@ -78,67 +81,12 @@ where
     b[i + 2] = bytes[2];
     b[i + 3] = 255;
 }
+
+
 fn to_byte(x: f32) -> u8 {
     (x * 255.0).clamp(0.0, 255.0) as u8
 }
 
-#[wasm_bindgen]
-struct StatefulFire {
-    palette: Vec<Hsl>,
-}
-
-#[wasm_bindgen]
-impl StatefulFire {
-    #[wasm_bindgen(constructor)]
-    pub fn new() -> Self {
-        let mut palette: Vec<Hsl> = Vec::with_capacity(256);
-        for i in 0..256 {
-            let fy = i as f32 / 255.0;
-            // let h = fy / 3.0;
-            let h = utils::remap_clamp(
-                fy,
-                0.0..=1.0,
-                // 187.0..=235.0
-                0.0..=91.0,
-            ) / 360.0;
-            // let h = (187.0 +  (235.0 - 187.0) * fy) ;
-            palette.push(HslRatio::from((h, 1.0, 1.0f32.min(fy * 2.0))).into());
-        }
-        Self { palette }
-    }
-    #[wasm_bindgen]
-    pub fn update(&mut self, t: f32, b: &mut [u8], fire: &mut [u8], w: usize, h: usize) {
-        // random bottom row
-        for x in 0..w {
-            let fi = (h - 1) * w + x;
-            let i = (h - 1) * w * 4 + x as usize * 4;
-            fire[fi] = rand::random();
-            set(b, i, &self.palette[fire[fi as usize] as usize]);
-        }
-
-        for y in 0..h - 1 {
-            let fy = y as f32 / h as f32;
-
-            for x in 0..w {
-                let fi = (y * w + x) as usize;
-
-                fire[fi] = (((fire[((y + 1) % h) * w + (x + w - 1) % w] as i64
-                    + fire[((y + 1) % h) * w + x] as i64
-                    + fire[((y + 1) % h) * w + (x + 1) % w] as i64
-                    + fire[((y + 2) % h) * w + x] as i64) as f32
-                    * t)
-                    / 4.0) as u8;
-                // fire[fi] = (fy * 255.0) as u8;
-                let fx = x as f32 / w as f32;
-                let i = y as usize * w * 4 + x as usize * 4;
-
-                // let c: &Hsl = &palette[((1.0 - fy) * 255.0) as usize];// colorsys::HslRatio::from((fx, fy, 0.5)).into();
-                let c: &Hsl = &self.palette[fire[fi] as usize]; // colorsys::HslRatio::from((fx, fy, 0.5)).into();
-                set(b, i, c);
-            }
-        }
-    }
-}
 
 static mut I: i32 = 0;
 #[wasm_bindgen]
@@ -157,11 +105,12 @@ pub fn render(t: f32, b: &mut [u8], fire: &mut [u8], w: usize, h: usize) {
         // let h = (187.0 +  (235.0 - 187.0) * fy) ;
         palette.push(HslRatio::from((h, 1.0, 1.0f32.min(fy * 2.0))).into());
     }
+    let mut rng = fastrand::Rng::new();
     // random bottom row
     for x in 0..w {
         let fi = (h - 1) * w + x;
         let i = (h - 1) * w * 4 + x as usize * 4;
-        fire[fi] = rand::random();
+        fire[fi] = rng.u8(0..u8::MAX);
         set(b, i, &palette[fire[fi as usize] as usize]);
     }
 
