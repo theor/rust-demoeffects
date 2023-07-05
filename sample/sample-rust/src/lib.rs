@@ -1,3 +1,4 @@
+mod display;
 mod fire;
 mod utils;
 mod plasma;

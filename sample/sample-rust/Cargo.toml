@@ -29,6 +29,7 @@ console_error_panic_hook = { version = "0.1.6", optional = true }
 # compared to the default allocator's ~10K. It is slower than the default
 # allocator, however.
 wee_alloc = { version = "0.4.5", optional = true }
+embedded-graphics = "0.8.0"
 colorsys = "0.6.7"
 fastrand = "2.0.0"
 # [dependencies.web-sys]

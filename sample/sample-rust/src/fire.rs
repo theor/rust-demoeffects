@@ -10,7 +10,7 @@ fn set_bytes<'a>(b: &mut [u8], i: usize, bytes: &[u8; 3]) {
 }
 
 #[wasm_bindgen]
-struct StatefulFire {
+pub struct StatefulFire {
     w: usize,
     h: usize,
     palette: Vec<[u8; 3]>,

@@ -1,6 +1,5 @@
-use std::{f32::consts::PI, vec};
+use std::{f32::consts::PI};
 
-use colorsys::{Hsl, Rgb};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 struct Star {
