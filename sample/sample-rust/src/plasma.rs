@@ -1,8 +1,7 @@
 use embedded_graphics::pixelcolor::raw::RawU24;
-use embedded_graphics::{prelude::*, pixelcolor::Rgb888};
+use embedded_graphics::prelude::*;
 
 use embedded_graphics::pixelcolor::Bgr888;
-use embedded_graphics::primitives::*;
 use std::vec;
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -53,7 +52,6 @@ impl Plasma {
         // .draw(&mut img_display).unwrap()
         for y in 0..self.h {
             for x in 0..self.w {
-                let i = y * self.w + x;
                 let fx = x as f32 / self.w as f32;
                 let fy = y as f32 / self.h as f32;
                 // ABGR
@@ -65,7 +63,7 @@ impl Plasma {
 
                 let c = self.palette[(c as usize + shift) % 256];
                 let rgb: Bgr888 = RawU24::from(c).into();
-                Pixel(Point::new(x as i32, y as i32), rgb).draw(&mut img_display);
+                Pixel(Point::new(x as i32, y as i32), rgb).draw(&mut img_display).unwrap();
                 // let rgb_slice = &[rgb.r(), rgb.g(), rgb.b(), 255];
                 // b[i * 4..(i + 1) * 4].copy_from_slice(rgb_slice);
             }
