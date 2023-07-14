@@ -46,7 +46,7 @@ impl StatefulFire {
     }
     #[wasm_bindgen(constructor)]
     pub fn new(w: usize, h: usize) -> Self {
-        let mut palette: Vec<[u8; 3]> = vec![
+        let palette: Vec<[u8; 3]> = vec![
             [0x07, 0x07, 0x07],
             [0x1F, 0x07, 0x07],
             [0x2F, 0x0F, 0x07],
@@ -91,7 +91,7 @@ impl StatefulFire {
         // random bottom row
         for x in 0..w {
             let fi = (h - 1) * w + x;
-            let i = (h - 1) * w * 4 + x as usize * 4;
+            // let i = (h - 1) * w * 4 + x as usize * 4;
             //     fire[fi] = rand::random();
             //     set(b, i, &self.palette[fire[fi as usize] as usize]);
             fire[fi] = 36;

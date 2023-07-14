@@ -1,13 +1,7 @@
-use embedded_graphics::pixelcolor::raw::RawU24;
-use embedded_graphics::prelude::*;
-
-use embedded_graphics::pixelcolor::Bgr888;
 use std::vec;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use colorsys::{Hsl, Rgb};
-
-use crate::display::Display;
 
 #[wasm_bindgen]
 pub struct Plasma {
@@ -43,10 +37,8 @@ impl Plasma {
         Self { w, h, palette }
     }
 
-    pub fn update(&mut self, b: &mut [u8], t: f32) {
+    pub fn update(&mut self, b: &mut [u32], t: f32) {
 
-        let mut img_display: Display<'_, Bgr888> = Display::new(Size::from((self.w as u32, self.h as u32)), b);
-        // img_display.clear(Bgr888::BLUE).unwrap();
         // Circle::new(Point::new(29, 29), 70)
         // .into_styled(PrimitiveStyle::with_stroke(Bgr888::RED, (4.0 *  (t * 5.0).sin()) as u32))
         // .draw(&mut img_display).unwrap()
@@ -62,10 +54,8 @@ impl Plasma {
                 let shift = (t * 100.0) as usize;
 
                 let c = self.palette[(c as usize + shift) % 256];
-                let rgb: Bgr888 = RawU24::from(c).into();
-                Pixel(Point::new(x as i32, y as i32), rgb).draw(&mut img_display).unwrap();
-                // let rgb_slice = &[rgb.r(), rgb.g(), rgb.b(), 255];
-                // b[i * 4..(i + 1) * 4].copy_from_slice(rgb_slice);
+                let i = y * self.w + x;
+                b[i] = c;
             }
         }
     }

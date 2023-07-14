@@ -35,6 +35,11 @@ pub trait Real:
 impl Real for f32 {}
 impl Real for f64 {}
 
+pub fn lerp_byte(range: RangeInclusive<u8>, t: f32) -> u8 {
+    ((1.0 - t) * *range.start() as f32 + t * *range.end() as f32).clamp(0.0, 255.0) as u8
+
+}
+
 /// Linear interpolation.
 #[inline(always)]
 pub fn lerp<R, T>(range: RangeInclusive<R>, t: T) -> R

@@ -96,8 +96,8 @@ self.prev_v = (
                 for (bx, by) in line_drawing::Bresenham::new((xp as i32, yp as i32), (x as i32, y as i32)) {
                     let i = (by as usize * self.w + bx as usize) * 4;
                     b[i..i + 4].copy_from_slice(&[ lerp_byte(0x96..=0xff, speed), lerp_byte(0xd5..=0xff, speed), 0xFF, 0xFF,]);
-
                 }
+            }
         }
     }
 }

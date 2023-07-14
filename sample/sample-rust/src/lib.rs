@@ -1,8 +1,8 @@
-mod display;
 mod fire;
-mod utils;
+pub mod utils;
 mod plasma;
 mod tunnel;
+mod roads;
 
 use wasm_bindgen::prelude::wasm_bindgen;
 
