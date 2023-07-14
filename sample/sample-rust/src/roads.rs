@@ -29,7 +29,7 @@ fn col32(r: u8, g: u8, b: u8) -> u32 {
 }
 // fog is 0..100
 fn col32f(r: u8, g: u8, b: u8, fog: u32) -> u32 {
-    255 << 24 | (b as u32 * fog / 100) << 16 | (g as u32* fog / 100) << 8 | (r as u32* fog / 100)
+    255 << 24 | (b as u32 * fog / 100) << 16 | (g as u32 * fog / 100) << 8 | (r as u32 * fog / 100)
 }
 
 const SEGMENT_LENGTH: i32 = 200; // length of a single segment
@@ -84,7 +84,7 @@ impl Roads {
     }
 
     pub fn update(&mut self, b: &mut [u32], time: f32) {
-        self.position += 150.0 * ((time*4.0).sin().powi(2) + 0.5);
+        self.position += 150.0 * ((time * 4.0).sin().powi(2) + 0.5);
 
         let camera_depth: f32 = 1.0 / ((FIELD_OF_VIEW / 2.0) * std::f32::consts::PI / 180.0).tan();
         let resolution: f32 = self.size.y as f32 / 480.0;
@@ -96,7 +96,7 @@ impl Roads {
         let base_segment = self.find_segment(self.position);
         log(&format!("pos {} base {base_segment}", self.position));
 
-// sky
+        // sky
         b[0..=(self.size.y >> 1) as usize * self.size.x as usize].fill(0xff5dc3ff);
         // grass
         b[(self.size.y >> 1) as usize * self.size.x as usize..].fill(0xff7a9c86);
@@ -104,9 +104,9 @@ impl Roads {
 
         for n in 0..DRAW_DISTANCE {
             let seg = (self.segments[base_segment].index + n as usize) % self.segments.len();
-           
+
             if n == 0 {
-            log(&format!("t {time} n {n} seg {seg} pos {}", self.position));
+                log(&format!("t {time} n {n} seg {seg} pos {}", self.position));
             }
 
             let dark = (seg as i32 / RUMBLE_LENGTH) % 2 == 0;
@@ -115,7 +115,7 @@ impl Roads {
             let cam = Vec3::new(
                 0.0 /* playerX */ * ROAD_WIDTH,
                 CAMERA_HEIGHT,
-                self.position /* - (segment.looped ? trackLength : 0) */
+                self.position, /* - (segment.looped ? trackLength : 0) */
             );
 
             let (s1, s2) = {
@@ -133,9 +133,9 @@ impl Roads {
                     continue;
                 }
 
-let fog_d = n as f32 / DRAW_DISTANCE as f32;
-let fog = (100.0 / (fog_d*fog_d*5.0).exp()) as u32;
-log(&fog.to_string());
+                let fog_d = n as f32 / DRAW_DISTANCE as f32;
+                let fog = (100.0 / (fog_d * fog_d * 5.0).exp()) as u32;
+                log(&fog.to_string());
 
                 maxy = s2.y;
 
@@ -171,24 +171,26 @@ log(&fog.to_string());
                         let horizontal_ratio = (p.0 - l.0) as f32 / lw as f32;
 
                         let c = if horizontal_ratio < RUMBLE_WIDTH
-                        || horizontal_ratio > 1.0 - RUMBLE_WIDTH
-                    {
-                        if !dark {
-                            col32f(163,14,2, fog) // red rumble
+                            || horizontal_ratio > 1.0 - RUMBLE_WIDTH
+                        {
+                            if !dark {
+                                col32f(163, 14, 2, fog) // red rumble
+                            } else {
+                                col32f(0xff, 0xff, 0xff, fog)
+                            }
+                        } else if dark && (0.49..0.51).contains(&horizontal_ratio) {
+                            // center line
+                            col32f(0xff, 0xff, 0xff, fog)
                         } else {
-                            col32f(0xff,0xff,0xff,fog)
-                        }
-                    } else if dark && (0.49..0.51).contains(&horizontal_ratio) { // center line
-                        col32f(0xff,0xff,0xff,fog)
-                    } else { // road segment
-                        if dark {
-                            col32f(0x92, 0x97, 0x93, fog)
-                        } else {
-                            col32f(0x9c, 0x9e, 0x9b, fog)
-                        }
-                    };
+                            // road segment
+                            if dark {
+                                col32f(0x92, 0x97, 0x93, fog)
+                            } else {
+                                col32f(0x9c, 0x9e, 0x9b, fog)
+                            }
+                        };
 
-                        b[(p.1 * self.size.x + p.0) as usize] = c;// (c as f32 * fog) as u32;
+                        b[(p.1 * self.size.x + p.0) as usize] = c; // (c as f32 * fog) as u32;
                     }
                 }
 
