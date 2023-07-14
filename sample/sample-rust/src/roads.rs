@@ -38,12 +38,12 @@ const FIELD_OF_VIEW: f32 = 100.0; // angle (degrees) for field of view
 const CAMERA_HEIGHT: f32 = 2000.0; // z height of camera
 const ROAD_WIDTH: f32 = 2000.0; // z height of camera
 const DRAW_DISTANCE: i32 = 300;
-
+const SEGMENT_COUNT: i32 = 500;
 #[wasm_bindgen]
 impl Roads {
     #[wasm_bindgen(constructor)]
     pub fn new(w: usize, h: usize) -> Self {
-        let mut segments = Vec::with_capacity(500);
+        let mut segments = Vec::with_capacity(SEGMENT_COUNT as usize);
         for n in 0..segments.capacity() {
             segments.push(Seg {
                 index: n,
@@ -84,17 +84,19 @@ impl Roads {
     }
 
     pub fn update(&mut self, b: &mut [u32], time: f32) {
+        let track_length = SEGMENT_COUNT * SEGMENT_LENGTH;
+
         self.position += 150.0 * ((time * 4.0).sin().powi(2) + 0.5);
+        while self.position > track_length as f32 { self.position -= track_length as f32; }
 
         let camera_depth: f32 = 1.0 / ((FIELD_OF_VIEW / 2.0) * std::f32::consts::PI / 180.0).tan();
         let resolution: f32 = self.size.y as f32 / 480.0;
 
         let player_z: f32 = CAMERA_HEIGHT * camera_depth;
 
-        let track_length = 500 * SEGMENT_LENGTH;
 
         let base_segment = self.find_segment(self.position);
-        log(&format!("pos {} base {base_segment}", self.position));
+        // log(&format!("pos {} base {base_segment}", self.position));
 
         // sky
         b[0..=(self.size.y >> 1) as usize * self.size.x as usize].fill(0xff5dc3ff);
@@ -105,21 +107,22 @@ impl Roads {
         for n in 0..DRAW_DISTANCE {
             let seg = (self.segments[base_segment].index + n as usize) % self.segments.len();
 
-            if n == 0 {
-                log(&format!("t {time} n {n} seg {seg} pos {}", self.position));
-            }
+            // if n == 0 {
+            //     log(&format!("t {time} n {n} seg {seg} pos {}", self.position));
+            // }
 
             let dark = (seg as i32 / RUMBLE_LENGTH) % 2 == 0;
             // let dark2 = (seg  as i32 / RUMBLE_LENGTH) % 4 == 0;
 
-            let cam = Vec3::new(
-                0.0 /* playerX */ * ROAD_WIDTH,
-                CAMERA_HEIGHT,
-                self.position, /* - (segment.looped ? trackLength : 0) */
-            );
-
             let (s1, s2) = {
                 let seg = &self.segments[seg];
+                let looped = seg.index < self.segments[base_segment].index;
+                // if looped { log("looped")}
+                let cam = Vec3::new(
+                    0.0 /* playerX */ * ROAD_WIDTH,
+                    CAMERA_HEIGHT,
+                    self.position - if looped { track_length as f32 } else { 0.0 },
+                );
                 (
                     self.project(seg.p1, cam, camera_depth, ROAD_WIDTH),
                     self.project(seg.p2, cam, camera_depth, ROAD_WIDTH),
@@ -135,7 +138,7 @@ impl Roads {
 
                 let fog_d = n as f32 / DRAW_DISTANCE as f32;
                 let fog = (100.0 / (fog_d * fog_d * 5.0).exp()) as u32;
-                log(&fog.to_string());
+                // log(&fog.to_string());
 
                 maxy = s2.y;
 
@@ -207,38 +210,38 @@ impl Roads {
     }
 }
 
-//  1
-// 2 3
-fn fill_bottom_flat_triangle(b: &mut [u32], v1: IVec2, v2: IVec2, v3: IVec2, w: usize, c: u32) {
-    let invslope1: i32 = (v2.x - v1.x) / (v2.y - v1.y);
-    let invslope2: i32 = (v3.x - v1.x) / (v3.y - v1.y);
+// //  1
+// // 2 3
+// fn fill_bottom_flat_triangle(b: &mut [u32], v1: IVec2, v2: IVec2, v3: IVec2, w: usize, c: u32) {
+//     let invslope1: i32 = (v2.x - v1.x) / (v2.y - v1.y);
+//     let invslope2: i32 = (v3.x - v1.x) / (v3.y - v1.y);
 
-    let mut curx1: i32 = v1.x;
-    let mut curx2: i32 = v1.x;
+//     let mut curx1: i32 = v1.x;
+//     let mut curx2: i32 = v1.x;
 
-    for scanline_y in v1.y..=v2.y {
-        for p in line_drawing::Bresenham::new((curx1, scanline_y), (curx2, scanline_y)) {
-            b[p.1 as usize * w + p.0 as usize] = c;
-        }
-        curx1 += invslope1;
-        curx2 += invslope2;
-    }
-}
+//     for scanline_y in v1.y..=v2.y {
+//         for p in line_drawing::Bresenham::new((curx1, scanline_y), (curx2, scanline_y)) {
+//             b[p.1 as usize * w + p.0 as usize] = c;
+//         }
+//         curx1 += invslope1;
+//         curx2 += invslope2;
+//     }
+// }
 
-// 1 2
-//  3
-fn fill_top_flat_triangle(b: &mut [u32], v1: IVec2, v2: IVec2, v3: IVec2, w: usize, c: u32) {
-    let invslope1 = (v3.x - v1.x) / (v3.y - v1.y);
-    let invslope2 = (v3.x - v2.x) / (v3.y - v2.y);
+// // 1 2
+// //  3
+// fn fill_top_flat_triangle(b: &mut [u32], v1: IVec2, v2: IVec2, v3: IVec2, w: usize, c: u32) {
+//     let invslope1 = (v3.x - v1.x) / (v3.y - v1.y);
+//     let invslope2 = (v3.x - v2.x) / (v3.y - v2.y);
 
-    let mut curx1 = v3.x;
-    let mut curx2 = v3.x;
+//     let mut curx1 = v3.x;
+//     let mut curx2 = v3.x;
 
-    for scanline_y in (v1.y..v3.y).rev() {
-        for p in line_drawing::Bresenham::new((curx1, scanline_y), (curx2, scanline_y)) {
-            b[p.1 as usize * w + p.0 as usize] = c;
-        }
-        curx1 -= invslope1;
-        curx2 -= invslope2;
-    }
-}
+//     for scanline_y in (v1.y..v3.y).rev() {
+//         for p in line_drawing::Bresenham::new((curx1, scanline_y), (curx2, scanline_y)) {
+//             b[p.1 as usize * w + p.0 as usize] = c;
+//         }
+//         curx1 -= invslope1;
+//         curx2 -= invslope2;
+//     }
+// }
