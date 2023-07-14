@@ -59,22 +59,7 @@ impl Stars {
 
     pub fn update(&mut self, b: &mut [u8], t: f32, vx: f32, vy: f32, speed_factor: f32) {
         b.fill(0);
-        // let mut img_display: Display<'_, Bgr888> =
-            // Display::new(Size::from((self.w as u32, self.h as u32)), b);
-        // img_display.clear(Bgr888::BLACK).unwrap();
-        // Circle::new(Point::new(29, 29), 70)
-        // .into_styled(PrimitiveStyle::with_stroke(Bgr888::RED, (4.0 *  (t * 5.0).sin()) as u32))
-        // .draw(&mut img_display).unwrap();
-
         let speed = (t / 2.0).sin().powi(2);
-        // let col = Bgr888::new(
-        //     (remap_clamp(speed, 0.0..=1.0, 150.0..=255.0)) as u8,
-        //     (remap_clamp(speed, 0.0..=1.0, 213.0..=255.0)) as u8,
-        //     227,
-        // );
-
-        // let vx = (t*1.5).cos();
-        // let vy = (t*2.2).sin();
 
 self.prev_v = (
     lerp(self.prev_v.0..=vx, 0.05),
@@ -108,34 +93,12 @@ self.prev_v = (
                     s.dist = 0.01; // * self.rng.f32();
                 }
             } else {
-
-
-                // Line::new(Point::new(xp as i32, yp as i32), Point::new(x as i32, y as i32))
-                // .draw_styled(&PrimitiveStyle::with_stroke(Bgr888::from(RawU24::from(col)), remap_clamp(s.dist, 0.0..=1.0, 1.0..=3.0) as u32), &mut img_display).unwrap();
-                
                 for (bx, by) in line_drawing::Bresenham::new((xp as i32, yp as i32), (x as i32, y as i32)) {
                     let i = (by as usize * self.w + bx as usize) * 4;
                     b[i..i + 4].copy_from_slice(&[ lerp_byte(0x96..=0xff, speed), lerp_byte(0xd5..=0xff, speed), 0xFF, 0xFF,]);
 
                 }
-
-                // let i = idx(xp, yp, self.w);
-                // b[i..i + 4].copy_from_slice(&[ 0x96, 0xd5, 0xFF, 0xFF,]);
-                // let i = idx(x, y, self.w);
-                // b[i..i + 4].copy_from_slice(&[0xFF, 0xFF, 0x77, 0xFF]);
-
-                // b[i..i + 4].copy_from_slice(&[ 0x00, 0x00, 0xbb, 0xFF,]); // r g _ r
-                // b[y as usize * self.w + x as usize] = 0xFFFFFFFF;
-            }
         }
     }
 }
 
-// 6.72
-// 3.9 no trig
-
-// 2.15 no blit
-
-fn idx(x: f32, y: f32, w: usize) -> usize {
-    (y as usize * w + x as usize) * 4
-}
