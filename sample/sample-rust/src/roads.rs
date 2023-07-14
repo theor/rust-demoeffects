@@ -47,8 +47,16 @@ impl Roads {
         for n in 0..segments.capacity() {
             segments.push(Seg {
                 index: n,
-                p1: Vec3::Z * n as f32 * SEGMENT_LENGTH as f32,
-                p2: Vec3::Z * (n + 1) as f32 * SEGMENT_LENGTH as f32,
+                p1: vec3(
+                    400.0 * (n as f32 / 10.0).sin(),
+                    0.0,
+                    n as f32 * SEGMENT_LENGTH as f32,
+                ),
+                p2: vec3(
+                    400.0 * ((n+1) as f32 / 10.0).sin(),
+                    0.0,
+                    (n + 1) as f32 * SEGMENT_LENGTH as f32,
+                ),
             });
         }
 
@@ -71,8 +79,8 @@ impl Roads {
         }
         let screen_scale = camera_depth / cam.z;
         let screen = IVec3::new(
-            (hw + screen_scale * cam.x * hw) as i32,
-            (hh - screen_scale * cam.y * hh) as i32,
+            (hw + screen_scale * cam.x * hw).ceil() as i32,
+            (hh - screen_scale * cam.y * hh).ceil() as i32,
             (screen_scale * road_width * hw) as i32,
         );
         Some(screen)
@@ -87,13 +95,17 @@ impl Roads {
         let track_length = SEGMENT_COUNT * SEGMENT_LENGTH;
 
         self.position += 150.0 * ((time * 4.0).sin().powi(2) + 0.5);
-        while self.position > track_length as f32 { self.position -= track_length as f32; }
+        while self.position > track_length as f32 {
+            self.position -= track_length as f32;
+        }
 
         let camera_depth: f32 = 1.0 / ((FIELD_OF_VIEW / 2.0) * std::f32::consts::PI / 180.0).tan();
         let resolution: f32 = self.size.y as f32 / 480.0;
 
         let player_z: f32 = CAMERA_HEIGHT * camera_depth;
 
+        let mut x = 0.0;
+        // let mut dx = 0.0;
 
         let base_segment = self.find_segment(self.position);
         // log(&format!("pos {} base {base_segment}", self.position));
@@ -105,6 +117,7 @@ impl Roads {
         let mut maxy = self.size.y as i32;
 
         for n in 0..DRAW_DISTANCE {
+            // if n != 10 { continue }
             let seg = (self.segments[base_segment].index + n as usize) % self.segments.len();
 
             // if n == 0 {
@@ -119,26 +132,29 @@ impl Roads {
                 let looped = seg.index < self.segments[base_segment].index;
                 // if looped { log("looped")}
                 let cam = Vec3::new(
-                    0.0 /* playerX */ * ROAD_WIDTH,
+                    0.5 /* playerX */ * ROAD_WIDTH - x,
                     CAMERA_HEIGHT,
                     self.position - if looped { track_length as f32 } else { 0.0 },
                 );
+                let cam2 = cam - vec3(0.0, 0.0, 0.0);
                 (
                     self.project(seg.p1, cam, camera_depth, ROAD_WIDTH),
-                    self.project(seg.p2, cam, camera_depth, ROAD_WIDTH),
+                    self.project(seg.p2, cam2, camera_depth, ROAD_WIDTH),
                 )
             };
 
+            // x += dx;
+
             // behind us
             if let (Some(s1), Some(s2)) = (s1, s2) {
-                if s2.y > maxy {
-                    // clip by (already rendered) segment
-                    continue;
-                }
+                // if s2.y > maxy {
+                //     // clip by (already rendered) segment
+                //     continue;
+                // }
 
                 let fog_d = n as f32 / DRAW_DISTANCE as f32;
                 let fog = (100.0 / (fog_d * fog_d * 5.0).exp()) as u32;
-                // log(&fog.to_string());
+                             // log(&fog.to_string());
 
                 maxy = s2.y;
 
@@ -159,21 +175,36 @@ impl Roads {
                     s1.y,        //.clamp(0, self.h as i32 - 1),
                 );
 
+                let dy = s1.y - s2.y;
+                let l_slope = ((bl - tl).x as f32) / dy as f32;
+                let r_slope = ((br - tr).x as f32).sqrt() / dy as f32;
+
+                log(&format!("{dy} {tl} {tr} {bl} {br}"));
+
                 const RUMBLE_WIDTH: f32 = 0.05;
-                for (l, r) in Bresenham::new((tl.x, tl.y), (bl.x, bl.y))
-                    .zip(Bresenham::new((tr.x, tr.y), (br.x, br.y)))
+                // fix that. different slopes mean non horizontal lines means incomplete rect
+                // for (l, r) in Bresenham::new((tl.x, tl.y), (bl.x, bl.y))
+                //     .zip(Bresenham::new((tr.x, tr.y), (br.x, br.y)))
+                for y in 0..=dy
                 {
-                    if l.1 < 0 || l.1 > (self.size.y as i32) - 1 {
+                    let l = bl + ivec2((y as f32 * l_slope) as i32,  (y as f32) as i32);
+                    let r = br + ivec2((y as f32 * r_slope) as i32,  (y as f32) as i32);
+                    log(&format!("  {l:?} {r:?}"));
+                    if l.y < 0 || l.y > (self.size.y as i32) - 1 {
                         break;
                     }
-                    let lw = r.0 - l.0;
-                    for p in Bresenham::new(l, r) {
-                        if !(0..self.size.x as i32 - 1).contains(&p.0) {
+                    let lw = r.x - l.x;
+                    for p in Bresenham::new((l.x, l.y), (r.x, r.y)) {
+                        if !(0..self.size.x as i32).contains(&p.0) {
                             continue;
                         }
-                        let horizontal_ratio = (p.0 - l.0) as f32 / lw as f32;
+                        if p.1 >= self.size.y {
+                            break;
+                        }
+                        let horizontal_ratio = (p.0 - l.x) as f32 / lw as f32;
 
-                        let c = if horizontal_ratio < RUMBLE_WIDTH
+                        let c = 
+                         if horizontal_ratio < RUMBLE_WIDTH
                             || horizontal_ratio > 1.0 - RUMBLE_WIDTH
                         {
                             if !dark {
