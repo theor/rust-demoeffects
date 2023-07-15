@@ -1,9 +1,10 @@
-use wasm_bindgen::prelude::wasm_bindgen;
+use wasm_bindgen::{prelude::wasm_bindgen, Clamped};
+use wasm_bindgen::JsCast;
 
 use bevy::math::*;
+use web_sys::ImageData;
 
-use crate::utils::log;
-
+use crate::utils::{log, as_u32_slice, log_value, as_u8_slice};
 
 struct Seg {
     index: usize,
@@ -12,11 +13,13 @@ struct Seg {
 }
 
 #[wasm_bindgen]
-pub struct Roads {
+pub struct Roads2 {
+    buffer: Vec<u32>,
     size: IVec2,
     segments: Vec<Seg>,
     position: f32,
 }
+
 // fog is 0..100
 fn col32f(r: u8, g: u8, b: u8, fog: u32) -> u32 {
     255 << 24 | (b as u32 * fog / 100) << 16 | (g as u32 * fog / 100) << 8 | (r as u32 * fog / 100)
@@ -30,9 +33,24 @@ const ROAD_WIDTH: f32 = 2000.0; // z height of camera
 const DRAW_DISTANCE: i32 = 300;
 const SEGMENT_COUNT: i32 = 500;
 #[wasm_bindgen]
-impl Roads {
+impl Roads2 {
     #[wasm_bindgen(constructor)]
-    pub fn new(w: usize, h: usize) -> Self {
+    pub fn new( w:u32, h: u32) -> Self {
+  
+
+        // let document = web_sys::window().unwrap().document().unwrap();
+        // let canvas = document.get_element_by_id(canvas_id).unwrap();
+        // let canvas: web_sys::HtmlCanvasElement = canvas
+        //     .dyn_into::<web_sys::HtmlCanvasElement>()
+        //     .map_err(|_| ())
+        //     .unwrap();
+        // let ctx = canvas
+        //     .get_context("2d")
+        //     .unwrap()
+        //     .unwrap()
+        //     .dyn_into::<web_sys::CanvasRenderingContext2d>()
+        //     .unwrap();
+
         let mut segments = Vec::with_capacity(SEGMENT_COUNT as usize);
         for n in 0..segments.capacity() {
             segments.push(Seg {
@@ -56,10 +74,18 @@ impl Roads {
             size: ivec2(w as i32, h as i32),
             segments,
             position: 0.0,
+            buffer: vec![0; (w*h) as usize],
         }
     }
 
-    fn project(&self, p: Vec3, cam_pos: Vec3, camera_depth: f32, road_width: f32, bottom: bool) -> Option<IVec3> {
+    fn project(
+        &self,
+        p: Vec3,
+        cam_pos: Vec3,
+        camera_depth: f32,
+        road_width: f32,
+        bottom: bool,
+    ) -> Option<IVec3> {
         let cam = p - cam_pos;
 
         let hw = self.size.x as f32 / 2.0;
@@ -71,7 +97,7 @@ impl Roads {
         let y = hh - screen_scale * cam.y * hh;
         let screen = IVec3::new(
             (hw + screen_scale * cam.x * hw) as i32,
-            if !bottom { y.floor()} else { y.ceil() } as i32,
+            if !bottom { y.floor() } else { y.ceil() } as i32,
             (screen_scale * road_width * hw) as i32,
         );
         // log(&format!("{p:#} {y} {screen_scale}"));
@@ -83,10 +109,13 @@ impl Roads {
         (z as usize / SEGMENT_LENGTH as usize) as usize % l
     }
 
-    pub fn update(&mut self, b: &mut [u32], time: f32, dir_x: i8, dir_y: i8) {
+    pub fn update(&mut self, ctx: &web_sys::CanvasRenderingContext2d, time: f32, dir_x: i8, dir_y: i8) {
+        // let mut bb = self.buffer.data().0;
+        // bb.fill(0xff);
+        // let b = as_u32_slice(&mut bb);
         let track_length = SEGMENT_COUNT * SEGMENT_LENGTH;
 
-        self.position += 150.0 * dir_y as f32;// * ((time * 4.0).sin().powi(2) + 0.5);
+        self.position += 150.0 * dir_y as f32; // * ((time * 4.0).sin().powi(2) + 0.5);
         while self.position > track_length as f32 {
             self.position -= track_length as f32;
         }
@@ -103,16 +132,18 @@ impl Roads {
         // log(&format!("pos {} base {base_segment}", self.position));
 
         // sky
-        b[0..=(self.size.y >> 1) as usize * self.size.x as usize].fill(0xff5dc3ff);
+        self.buffer[0..=(self.size.y >> 1) as usize * self.size.x as usize].fill(0xff5dc3ff);
+        // b.fill(0xffffffff);
+        // self.buffer.data().fill(0xff);
+        // log_value(&ctx);
         // grass
-        b[(self.size.y >> 1) as usize * self.size.x as usize..].fill(
+        self.buffer[(self.size.y >> 1) as usize * self.size.x as usize..].fill(
             // 0xff0000ff
-            0xff7a9c86
+            0xff7a9c86,
         );
         let mut maxy = self.size.y as i32;
 
         for n in 0..DRAW_DISTANCE {
-
             // if n > 10 { break }
             // if n <= 8 { continue }
             // if n != 10 { continue }
@@ -153,7 +184,7 @@ impl Roads {
 
                 let fog_d = n as f32 / DRAW_DISTANCE as f32;
                 let fog = (100.0 / (fog_d * fog_d * 5.0).exp()) as u32;
-                             // log(&fog.to_string());
+                // log(&fog.to_string());
 
                 maxy = s2.y;
 
@@ -184,12 +215,13 @@ impl Roads {
                 // fix that. different slopes mean non horizontal lines means incomplete rect
                 // for (l, r) in Bresenham::new((tl.x, tl.y), (bl.x, bl.y))
                 //     .zip(Bresenham::new((tr.x, tr.y), (br.x, br.y)))
-                for y in 0..dy
-                {
+                for y in 0..dy {
                     let py = s2.y + y;
-                    if py >= self.size.y { break; }
-                    let l = bl + ivec2((y as f32 * l_slope) as i32,  y);
-                    let r = br + ivec2((y as f32 * r_slope) as i32,  y);
+                    if py >= self.size.y {
+                        break;
+                    }
+                    let l = bl + ivec2((y as f32 * l_slope) as i32, y);
+                    let r = br + ivec2((y as f32 * r_slope) as i32, y);
                     // log(&format!("  {l:?} {r:?}"));
                     // log(&format!("    py {py}"));
                     let lw = r.x - l.x;
@@ -199,8 +231,7 @@ impl Roads {
                         }
                         let horizontal_ratio = (p - l.x) as f32 / lw as f32;
 
-                        let c = 
-                         if horizontal_ratio < RUMBLE_WIDTH
+                        let c = if horizontal_ratio < RUMBLE_WIDTH
                             || horizontal_ratio > 1.0 - RUMBLE_WIDTH
                         {
                             if !dark {
@@ -220,7 +251,7 @@ impl Roads {
                             }
                         };
 
-                        b[((py) * self.size.x + p) as usize] = c; // (c as f32 * fog) as u32;
+                        self.buffer[((py) * self.size.x + p) as usize] = c; // (c as f32 * fog) as u32;
                     }
                 }
 
@@ -233,7 +264,9 @@ impl Roads {
                 // }
             }
         }
-        ()
+        ctx.put_image_data(&ImageData::new_with_u8_clamped_array_and_sh( Clamped(&as_u8_slice(&self.buffer)), self.size.x as u32, self.size.y as u32).unwrap(), 0.0, 0.0).unwrap();
+
+        // ctx.put_image_data(&self.buffer, 0.0, 0.0).unwrap();
     }
 }
 

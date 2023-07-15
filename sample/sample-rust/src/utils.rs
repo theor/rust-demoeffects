@@ -4,6 +4,9 @@ use std::ops::Mul;
 use std::ops::RangeInclusive;
 use std::ops::Sub;
 
+use wasm_bindgen::JsValue;
+use wasm_bindgen::prelude::wasm_bindgen;
+
 /// Helper trait to implement [`lerp`] and [`remap`].
 pub trait One {
     fn one() -> Self;
@@ -80,5 +83,32 @@ where
         } else {
             lerp(to, t)
         }
+    }
+}
+
+#[wasm_bindgen]
+extern "C" {
+    // Use `js_namespace` here to bind `console.log(..)` instead of just
+    // `log(..)`
+    #[wasm_bindgen(js_namespace = console)]
+    pub fn log(s: &str);
+    #[wasm_bindgen(js_namespace = console, js_name = log)]
+    pub fn log_value(x: &JsValue);
+}
+pub fn as_u8_slice(v: & [u32]) -> & [u8] {
+    unsafe {
+        std::slice::from_raw_parts(
+            v.as_ptr() as *const u8,
+            v.len() * std::mem::size_of::<u32>() ,
+        )
+    }
+}
+
+pub fn as_u32_slice(v: &mut [u8]) -> &mut [u32] {
+    unsafe {
+        std::slice::from_raw_parts_mut(
+            v.as_ptr() as *mut u32,
+            v.len() * std::mem::size_of::<u8>() / std::mem::size_of::<u32>(),
+        )
     }
 }
