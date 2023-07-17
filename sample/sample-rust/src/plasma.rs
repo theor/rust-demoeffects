@@ -4,14 +4,13 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 use colorsys::{Hsl, Rgb};
 
-use crate::utils::{lerp, SinCosLut, Lut};
+use crate::utils::lerp;
 
 #[wasm_bindgen]
 pub struct Plasma {
     w: usize,
     h: usize,
     palette: Vec<u32>,
-    lut: SinCosLut,
 }
 
 fn col32(r: u8, g: u8, b: u8) -> u32 {
@@ -41,7 +40,7 @@ impl Plasma {
             // palette[i] = col32(255,0,0);
         }
 
-        Self { w, h, palette, lut: SinCosLut::new(lut), }
+        Self { w, h, palette }
     }
 
     pub fn update(&mut self, b: &mut [u32], time: f32) {
@@ -56,10 +55,10 @@ impl Plasma {
                 let fy = y as f32 / self.h as f32;
 
                 let c = vec2(fx, fy) * a * 8.0 + vec2(time * 0.3,time * 0.3);
-                let k = 0.1 + (c.y + (0.148 - time).sin_lut(&self.lut)).cos_lut(&self.lut) + 2.4 * time;
-                let w = 0.9 + (c.x + (0.628 + time).cos_lut(&self.lut)).sin_lut(&self.lut) - 0.7 * time;
+                let k = 0.1 + (c.y + (0.148 - time).sin()).cos() + 2.4 * time;
+                let w = 0.9 + (c.x + (0.628 + time).cos()).sin() - 0.7 * time;
                 let d = c.length();
-                let s = 7.0 * (d+w).cos_lut(&self.lut) * (k+w).sin_lut(&self.lut);
+                let s = 7.0 * (d+w).cos() * (k+w).sin();
                 // ABGR
                 // let (xt, yt) = (t * 2.0).sin_cos();
                 // let cf = (127.0 + (128.0 * (fx * 32.0 + xt * 2.0).sin()))
@@ -78,7 +77,7 @@ impl Plasma {
                 // let cv = cv * (vec3(1.0, 0.7, 0.4) * cv.normalize().z.max(0.0).powi(2) + 0.75);
 
                 b[i] = col32f(cv.x,cv.y, cv.z);
-                let c = self.palette[((s.cos_lut(&self.lut) * 0.5 + 0.5) * 255.0) as usize % 256];
+                let c = self.palette[((s.cos() * 0.5 + 0.5) * 255.0) as usize % 256];
                 b[i] = c;
             }
         }
