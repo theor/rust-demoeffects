@@ -2821,7 +2821,6 @@ dependencies = [
  "line_drawing",
  "wasm-bindgen",
  "wasm-bindgen-test",
- "web-sys",
  "wee_alloc",
 ]
 

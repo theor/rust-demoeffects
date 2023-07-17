@@ -8,7 +8,8 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["console_error_panic_hook"]
+console_error_panic_hook = ["dep:console_error_panic_hook"]
+default = ["dep:wee_alloc"]
 
 [package.metadata.wasm-pack.profile.profiling]
 # previously had just ['-O4']
@@ -33,12 +34,20 @@ colorsys = "0.6.7"
 fastrand = "2.0.0"
 line_drawing = "1.0.0"
 bevy = "0.11.0"
-[dependencies.web-sys]
-version = "0.3"
-features = [
-  'ImageData',
-  'CanvasRenderingContext2d',
-]
+# [dependencies.web-sys]
+# version = "0.3"
+# features = [
+#   'ImageData',
+#   'CanvasRenderingContext2d',
+# ]
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.13"
+
+# roads2: 2.60ms
+[profile.release]
+lto = true
+opt-level = 's' # 2.60
+[profile.profiling]
+lto = true
+opt-level = 's' # 2.60

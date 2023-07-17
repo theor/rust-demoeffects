@@ -1,10 +1,8 @@
-use wasm_bindgen::{prelude::wasm_bindgen, Clamped};
-use wasm_bindgen::JsCast;
+use wasm_bindgen::prelude::wasm_bindgen;
 
 use bevy::math::*;
-use web_sys::ImageData;
 
-use crate::utils::{log, as_u32_slice, log_value, as_u8_slice};
+use crate::utils::log;
 
 struct Seg {
     index: usize,
@@ -68,7 +66,7 @@ impl Roads2 {
             });
         }
 
-        log(&format!("segs: {}", segments.len()));
+        // log(&format!("segs: {}", segments.len()));
 
         Self {
             size: ivec2(w as i32, h as i32),
@@ -77,7 +75,9 @@ impl Roads2 {
             buffer: vec![0; (w*h) as usize],
         }
     }
-
+pub fn get_ptr(&self) -> *const u32 {
+    self.buffer.as_ptr()
+}
     fn project(
         &self,
         p: Vec3,
@@ -109,7 +109,7 @@ impl Roads2 {
         (z as usize / SEGMENT_LENGTH as usize) as usize % l
     }
 
-    pub fn update(&mut self, ctx: &web_sys::CanvasRenderingContext2d, time: f32, dir_x: i8, dir_y: i8) {
+    pub fn update(&mut self, time: f32, dir_x: i8, dir_y: i8) {
         // let mut bb = self.buffer.data().0;
         // bb.fill(0xff);
         // let b = as_u32_slice(&mut bb);
@@ -120,7 +120,7 @@ impl Roads2 {
             self.position -= track_length as f32;
         }
 
-        let camera_depth: f32 = 1.0 / ((FIELD_OF_VIEW / 2.0) * std::f32::consts::PI / 180.0).tan();
+        let camera_depth: f32 = 1.0 / ((FIELD_OF_VIEW / 2.0) * core::f32::consts::PI / 180.0).tan();
         let resolution: f32 = self.size.y as f32 / 480.0;
 
         let player_z: f32 = CAMERA_HEIGHT * camera_depth;
@@ -264,7 +264,7 @@ impl Roads2 {
                 // }
             }
         }
-        ctx.put_image_data(&ImageData::new_with_u8_clamped_array_and_sh( Clamped(&as_u8_slice(&self.buffer)), self.size.x as u32, self.size.y as u32).unwrap(), 0.0, 0.0).unwrap();
+        // ctx.put_image_data(&ImageData::new_with_u8_clamped_array_and_sh( Clamped(&as_u8_slice(&self.buffer)), self.size.x as u32, self.size.y as u32).unwrap(), 0.0, 0.0).unwrap();
 
         // ctx.put_image_data(&self.buffer, 0.0, 0.0).unwrap();
     }

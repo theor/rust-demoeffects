@@ -1,8 +1,8 @@
-use std::ops::Add;
-use std::ops::Div;
-use std::ops::Mul;
-use std::ops::RangeInclusive;
-use std::ops::Sub;
+use core::ops::Add;
+use core::ops::Div;
+use core::ops::Mul;
+use core::ops::RangeInclusive;
+use core::ops::Sub;
 
 use wasm_bindgen::JsValue;
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -86,29 +86,95 @@ where
     }
 }
 
+#[cfg(debug_assertions)]
 #[wasm_bindgen]
 extern "C" {
-    // Use `js_namespace` here to bind `console.log(..)` instead of just
-    // `log(..)`
+    
     #[wasm_bindgen(js_namespace = console)]
-    pub fn log(s: &str);
+    pub(crate) fn log(s: &str);
     #[wasm_bindgen(js_namespace = console, js_name = log)]
-    pub fn log_value(x: &JsValue);
+    pub(crate) fn log_value(x: &JsValue);
 }
-pub fn as_u8_slice(v: & [u32]) -> & [u8] {
+
+#[cfg(not(debug_assertions))]
+pub(crate) fn log(s: &str) {}
+#[cfg(not(debug_assertions))]
+pub(crate) fn log_value(x: &JsValue) {}
+
+pub(crate) fn as_u8_slice(v: & [u32]) -> & [u8] {
     unsafe {
-        std::slice::from_raw_parts(
+        core::slice::from_raw_parts(
             v.as_ptr() as *const u8,
-            v.len() * std::mem::size_of::<u32>() ,
+            v.len() * core::mem::size_of::<u32>() ,
         )
     }
 }
 
-pub fn as_u32_slice(v: &mut [u8]) -> &mut [u32] {
+pub(crate) fn as_u32_slice(v: &mut [u8]) -> &mut [u32] {
     unsafe {
-        std::slice::from_raw_parts_mut(
+        core::slice::from_raw_parts_mut(
             v.as_ptr() as *mut u32,
-            v.len() * std::mem::size_of::<u8>() / std::mem::size_of::<u32>(),
+            v.len() * core::mem::size_of::<u8>() / core::mem::size_of::<u32>(),
         )
+    }
+}
+
+pub trait Lut {
+    fn sin_lut(&self, lut: &SinCosLut) -> Self ;
+    fn cos_lut(&self, lut: &SinCosLut) -> Self;
+}
+
+impl Lut for f32 {
+    fn sin_lut(&self, lut: &SinCosLut) -> f32 {
+        lut.sin(*self)
+    }
+    fn cos_lut(&self, lut: &SinCosLut) -> f32 {
+        lut.cos(*self)
+    }
+}
+
+const TWO_PI:f32 = core::f32::consts::PI*2.0;
+
+// #[wasm_bindgen]
+pub struct SinCosLut {
+    sins: Vec<f32>,
+    coss: Vec<f32>,
+
+}
+
+// #[wasm_bindgen]
+impl SinCosLut {
+    // #[wasm_bindgen(constructor)]
+    pub fn new(sample_count: usize) -> Self {
+        let mut sins = vec![0.0; sample_count];
+        let mut coss = vec![0.0; sample_count];
+
+        for i in 0..sample_count {
+            let f = (i as f32 / sample_count as f32) * TWO_PI;
+            sins[i] = f.sin();
+            coss[i] = f.cos();
+        }
+
+        Self {
+            sins,
+            coss,
+        }
+    }
+
+
+    // #[wasm_bindgen]
+    #[inline(always)]
+    pub(crate) fn sin(&self, f:f32) -> f32 {
+        // f.sin()
+        let s = f.signum();
+        let f = (f.abs() * self.sins.len() as f32 / TWO_PI) as usize;
+        self.sins[f % self.sins.len()] * s
+    }
+    // #[wasm_bindgen]
+    #[inline(always)]
+    pub(crate) fn cos(&self, f:f32) -> f32 {
+        // f.cos()
+        let f = (f.abs() * self.coss.len() as f32 / TWO_PI) as usize;
+        self.coss[f % self.coss.len()]
     }
 }
