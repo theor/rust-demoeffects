@@ -23,7 +23,7 @@ fn col32f(r: f32, g: f32, b: f32) -> u32 {
 #[wasm_bindgen]
 impl Plasma {
     #[wasm_bindgen(constructor)]
-    pub fn new(w: usize, h: usize, lut: usize) -> Self {
+    pub fn new(w: usize, h: usize) -> Self {
         let mut palette: Vec<u32> = vec![0; 256];
         for i in 0..palette.len() {
             let f = i as f32 / palette.len() as f32;
@@ -37,16 +37,12 @@ impl Plasma {
                 c.green().min(255.0) as u8,
                 c.blue().min(255.0) as u8,
             );
-            // palette[i] = col32(255,0,0);
         }
 
         Self { w, h, palette }
     }
 
     pub fn update(&mut self, b: &mut [u32], time: f32) {
-        // Circle::new(Point::new(29, 29), 70)
-        // .into_styled(PrimitiveStyle::with_stroke(Bgr888::RED, (4.0 *  (t * 5.0).sin()) as u32))
-        // .draw(&mut img_display).unwrap()
 
         let a = vec2(self.w as f32 / self.h as f32, 1.0);
         for y in 0..self.h {
@@ -59,23 +55,8 @@ impl Plasma {
                 let w = 0.9 + (c.x + (0.628 + time).cos()).sin() - 0.7 * time;
                 let d = c.length();
                 let s = 7.0 * (d+w).cos() * (k+w).sin();
-                // ABGR
-                // let (xt, yt) = (t * 2.0).sin_cos();
-                // let cf = (127.0 + (128.0 * (fx * 32.0 + xt * 2.0).sin()))
-                //     + (127.0 + (128.0 * (fy * 32.0 + (yt)).sin()));
-                // let c = (cf / 2.0) as u8;
-                // let shift = (t * 100.0) as usize;
-
-                // let c = self.palette[(c as usize + shift) % 256];
                 let i = y * self.w + x;
-                // b[i] = c;
-
-                
                 let cv = s + vec3(0.2, 0.5, 0.9);
-                // let cv = vec3(0.5 + 0.5 * cv.x.cos(), 0.5 + 0.5 * cv.y.cos(), 0.5 + 0.5 * cv.z.cos());
-
-                // let cv = cv * (vec3(1.0, 0.7, 0.4) * cv.normalize().z.max(0.0).powi(2) + 0.75);
-
                 b[i] = col32f(cv.x,cv.y, cv.z);
                 let c = self.palette[((s.cos() * 0.5 + 0.5) * 255.0) as usize % 256];
                 b[i] = c;
