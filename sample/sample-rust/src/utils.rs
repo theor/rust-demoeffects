@@ -178,3 +178,13 @@ impl SinCosLut {
         self.coss[f % self.coss.len()]
     }
 }
+
+
+
+pub(crate) fn col32((r,g,b):(u8,u8,u8)) -> u32 {
+    255 << 24 | (b as u32) << 16 | (g as u32) << 8 | (r as u32)
+}
+
+pub(crate) fn col32f(r: u8, g: u8, b: u8, fog: u32) -> u32 {
+    255 << 24 | (b as u32 * fog / 100) << 16 | (g as u32 * fog / 100) << 8 | (r as u32 * fog / 100)
+}

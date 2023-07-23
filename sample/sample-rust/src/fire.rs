@@ -10,10 +10,15 @@ fn set_bytes<'a>(b: &mut [u8], i: usize, bytes: &[u8; 3]) {
 }
 
 #[wasm_bindgen]
+pub enum FirePalette {
+    Default,
+}
+#[wasm_bindgen]
 pub struct StatefulFire {
     w: usize,
     h: usize,
-    palette: Vec<[u8; 3]>,
+    buffer: Vec<u32>,
+    palette: Vec<u32>,
     fire: Vec<u8>,
     prev_t: f32,
 }
@@ -37,16 +42,18 @@ impl StatefulFire {
         }
     }
     #[wasm_bindgen]
-    pub fn set_palette(&mut self, p: &[u8]) {
-        let mut i = 0;
-        for c in p.chunks(3) {
-            self.palette[i].copy_from_slice(c);
-            i += 1;
-        }
+    pub fn get_ptr(&self) -> *const u32 { self.buffer.as_ptr() }
+    #[wasm_bindgen]
+    pub fn set_palette(&mut self, p:FirePalette) {
+        // let mut i = 0;
+        // for c in p.chunks(3) {
+        //     self.palette[i].copy_from_slice(c);
+        //     i += 1;
+        // }
     }
     #[wasm_bindgen(constructor)]
     pub fn new(w: usize, h: usize) -> Self {
-        let palette: Vec<[u8; 3]> = vec![
+        let palette: Vec<u32> = [
             [0x07, 0x07, 0x07],
             [0x1F, 0x07, 0x07],
             [0x2F, 0x0F, 0x07],
@@ -84,7 +91,8 @@ impl StatefulFire {
             [0xDF, 0xDF, 0x9F],
             [0xEF, 0xEF, 0xC7],
             [0xFF, 0xFF, 0xFF],
-        ];
+        ].iter().map(|&[r,g,b]|  255 << 24 | (b as u32) << 16 | (g as u32) << 8 | (r as u32))
+        .collect();
 
         let mut fire = vec![0; w * h];
 
@@ -100,13 +108,14 @@ impl StatefulFire {
         Self {
             w,
             h,
+            buffer: vec![0; w*h],
             palette,
             fire,
             prev_t: 0.0,
         }
     }
     #[wasm_bindgen]
-    pub fn update(&mut self, t: f32, b: &mut [u8], attenuation: u8, min_x: i32, max_x: i32) {
+    pub fn update(&mut self, t: f32, attenuation: u8, min_x: i32, max_x: i32) {
         self.prev_t = t;
         let (w, h) = (self.w, self.h);
 
@@ -116,8 +125,8 @@ impl StatefulFire {
             for y in 0..h {
                 if y == h - 1 {
                     for x in 0..w {
-                        let i = y as usize * w * 4 + x as usize * 4;
-                        set_bytes(b, i, &self.palette[36]);
+                        let i = y as usize * w + x as usize;
+                        self.buffer[i] = self.palette[36];
                     }
                     continue;
                 }
@@ -132,10 +141,10 @@ impl StatefulFire {
                     as i32
                     - fire_rand as i32)
                     .clamp(0, 36) as u8;
-                let i = y as usize * w * 4 + x as usize * 4;
+                let i = y as usize * w + x as usize;
 
-                let c = &self.palette[(self.fire[fi] as usize).min(36)];
-                set_bytes(b, i, c);
+                let c = self.palette[(self.fire[fi] as usize).min(36)];
+                self.buffer[i] = c;
             }
         }
     }

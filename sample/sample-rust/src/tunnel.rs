@@ -8,7 +8,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 // use embedded_graphics::primitives::*;
 
 // use crate::display::Display;
-use crate::utils::{remap_clamp, lerp, lerp_byte};
+use crate::utils::{remap_clamp, lerp, lerp_byte, col32};
 struct Star {
     angle: f32,
     dist: f32,
@@ -20,6 +20,7 @@ pub struct Stars {
     stars: Vec<Star>,
     c: (usize, usize),
     prev_v: (f32, f32),
+    buffer: Vec<u32>,
     // prev_t: f32,
     // rng: fastrand::Rng,
     // palette: Vec<u32>,
@@ -52,22 +53,30 @@ impl Stars {
             c: (w / 2, h / 2),
             stars,
             prev_v: (0.0, 0.0),
+            buffer: vec![0; w*h],
             // prev_t: 0.0,
             // rng,
         }
     }
+    #[wasm_bindgen]
+    pub fn get_ptr(&self) -> *const u32 { self.buffer.as_ptr() }
 
-    pub fn update(&mut self, b: &mut [u8], t: f32, vx: f32, vy: f32, speed_factor: f32) {
-        b.fill(0);
+    pub fn update(&mut self, t: f32, vx: f32, vy: f32, speed_factor: f32) {
+        self.buffer.fill(0);
         let speed = (t / 2.0).sin().powi(2);
 
-self.prev_v = (
-    lerp(self.prev_v.0..=vx, 0.05),
-    lerp(self.prev_v.1..=vy, 0.05),
-);
+        self.prev_v = (
+            lerp(self.prev_v.0..=vx, 0.08),
+            lerp(self.prev_v.1..=vy, 0.08),
+        );
+
+        let v = (
+            (self.prev_v.0 + 0.2 * t.sin().powi(2)).clamp(0.0, 1.0),
+            (self.prev_v.1 + 0.2 * t.cos().powi(2)).clamp(0.0, 1.0),
+        );
         let c = (
-            (self.c.0 as f32 + (self.c.0 as f32) * 1.3 * (self.prev_v.0 - 0.5)) as usize, 
-            (self.c.1 as f32 + (self.c.1 as f32) * 1.3 * (self.prev_v.1 - 0.5)) as usize, 
+            (self.c.0 as f32 + (self.c.0 as f32) * 1.3 * (v.0 - 0.5)) as usize, 
+            (self.c.1 as f32 + (self.c.1 as f32) * 1.3 * (v.1 - 0.5)) as usize, 
         );
 
         let rqrt = ((self.c.0 * self.c.0 + self.c.1 * self.c.1) as f32).sqrt();
@@ -94,8 +103,8 @@ self.prev_v = (
                 }
             } else {
                 for (bx, by) in line_drawing::Bresenham::new((xp as i32, yp as i32), (x as i32, y as i32)) {
-                    let i = (by as usize * self.w + bx as usize) * 4;
-                    b[i..i + 4].copy_from_slice(&[ lerp_byte(0x96..=0xff, speed), lerp_byte(0xd5..=0xff, speed), 0xFF, 0xFF,]);
+                    let i = (by as usize * self.w + bx as usize);
+                    self.buffer[i]= col32((lerp_byte(0x96..=0xff, speed), lerp_byte(0xd5..=0xff, speed), 0xFF));
                 }
             }
         }

@@ -2,7 +2,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 use bevy::math::*;
 
-use crate::utils::log;
+use crate::utils::col32f;
 
 struct Seg {
     index: usize,
@@ -19,9 +19,6 @@ pub struct Roads2 {
 }
 
 // fog is 0..100
-fn col32f(r: u8, g: u8, b: u8, fog: u32) -> u32 {
-    255 << 24 | (b as u32 * fog / 100) << 16 | (g as u32 * fog / 100) << 8 | (r as u32 * fog / 100)
-}
 
 const SEGMENT_LENGTH: i32 = 200; // length of a single segment
 const RUMBLE_LENGTH: i32 = 3; // number of lanes
@@ -33,9 +30,7 @@ const SEGMENT_COUNT: i32 = 500;
 #[wasm_bindgen]
 impl Roads2 {
     #[wasm_bindgen(constructor)]
-    pub fn new( w:u32, h: u32) -> Self {
-  
-
+    pub fn new(w: u32, h: u32) -> Self {
         // let document = web_sys::window().unwrap().document().unwrap();
         // let canvas = document.get_element_by_id(canvas_id).unwrap();
         // let canvas: web_sys::HtmlCanvasElement = canvas
@@ -72,12 +67,14 @@ impl Roads2 {
             size: ivec2(w as i32, h as i32),
             segments,
             position: 0.0,
-            buffer: vec![0; (w*h) as usize],
+            buffer: vec![0; (w * h) as usize],
         }
     }
-pub fn get_ptr(&self) -> *const u32 {
-    self.buffer.as_ptr()
-}
+
+    pub fn get_ptr(&self) -> *const u32 {
+        self.buffer.as_ptr()
+    }
+    
     fn project(
         &self,
         p: Vec3,
