@@ -339,23 +339,23 @@ fn draw_bitmap(
     pos: IVec2,
     bmp: &Bitmap,
     transparent: u32,
-    scale: usize,
+    scale: f32,
 ) {
     for y in 0..bmp.h {
-        if h < scale - 1 || (y ) * scale+ pos.y as usize >= h - (scale - 1) {
-            break;
-        }
+        
         for x in 0..bmp.w {
-            if x * scale + pos.x as usize >= w {
-                break;
-            }
+            
             let c = bmp.data[bmp.w * y + x];
             if c != transparent {
-                for sy in 0..scale {
-                    for sx in 0..scale {
+                for sy in 0..scale.ceil() as usize {
+                    let py = (((scale * y as f32)).ceil() as i32 + pos.y as i32 + sy as i32) as i32;
+                    if py < 0 || py as usize >= h { continue }
+                    for sx in 0..scale.ceil() as usize {
+                        let px = (x as f32 * scale).ceil() as i32 + sx as i32 + pos.x as i32;
+                        if px < 0 || px as usize >= w { continue }
                         b[
-                            w * ((scale * y) + pos.y as usize + sy)  + 
-                            x * scale + sx + pos.x as usize
+                            w *  py as usize + 
+                            px as usize
                         ] = c;
                     }
                 }
@@ -474,10 +474,10 @@ impl Roads2 {
         // let mut dx = 0.0;
 
         let base_segment = self.find_segment(self.position);
-        crate::utils::log(&format!(
-            "pos {} base {base_segment} {}",
-            self.position, self.segments[base_segment].index
-        ));
+        // crate::utils::log(&format!(
+        //     "pos {} base {base_segment} {}",
+        //     self.position, self.segments[base_segment].index
+        // ));
 
         // sky
         self.buffer[0..=(self.size.y >> 1) as usize * self.size.x as usize]
@@ -607,17 +607,17 @@ impl Roads2 {
                 }
 
                 if is_tree {
-                    let spr_w = ((z1 * s1.z as f32 * self.size.x as f32 * 0.1) as i32).max(1);
-                    println!("{n} {z1} {spr_w}" );
+                    let spr_w = ((z1 * s1.z as f32 * self.size.x as f32 * 0.1)).max(0.1);
+                    // println!("{n} {z1} {spr_w}" );
                     draw_bitmap(
                         &mut self.buffer,
                         self.size.x as usize,
                         self.size.y as usize,
-                        s1.xy() - ivec2(s1.z + coconut.w as i32 * spr_w / 2, coconut.h as i32 * spr_w),
+                        s1.xy() - ivec2(s1.z + (coconut.w as f32 * spr_w / 2.0) as i32, (coconut.h as f32 * spr_w) as i32),
                         &coconut,
                         0xFFFFFFFF,
                         // 3
-                        spr_w as usize,
+                        spr_w,
                     );
                 }
 
