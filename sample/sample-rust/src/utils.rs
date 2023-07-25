@@ -85,7 +85,7 @@ where
     }
 }
 
-#[cfg(debug_assertions)]
+#[cfg(all(target_arch = "wasm32", debug_assertions))]
 #[wasm_bindgen]
 extern "C" {
 
@@ -95,10 +95,15 @@ extern "C" {
     pub(crate) fn log_value(x: &JsValue);
 }
 
-#[cfg(not(debug_assertions))]
+#[cfg(all(target_arch = "wasm32", not(debug_assertions)))]
 pub(crate) fn log(s: &str) {}
-#[cfg(not(debug_assertions))]
+#[cfg(all(target_arch = "wasm32", not(debug_assertions)))]
 pub(crate) fn log_value(x: &JsValue) {}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn log(s: &str) {
+    println!("{}", s);
+}
 
 pub(crate) fn as_u8_slice(v: &[u32]) -> &[u8] {
     unsafe {

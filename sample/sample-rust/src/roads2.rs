@@ -16,7 +16,7 @@ pub struct Roads2 {
     size: IVec2,
     segments: Vec<Seg>,
     position: f32,
-    dir: Vec2,
+    dir: Vec2,camera_depth: f32,
 }
 
 // 30 x 80
@@ -342,7 +342,7 @@ fn draw_bitmap(
     scale: usize,
 ) {
     for y in 0..bmp.h {
-        if y * scale + pos.y as usize >= h {
+        if h < scale - 1 || (y ) * scale+ pos.y as usize >= h - (scale - 1) {
             break;
         }
         for x in 0..bmp.w {
@@ -353,7 +353,10 @@ fn draw_bitmap(
             if c != transparent {
                 for sy in 0..scale {
                     for sx in 0..scale {
-                        b[w * ((scale * y) + pos.y as usize) + sy * w + x * scale + sx] = c;
+                        b[
+                            w * ((scale * y) + pos.y as usize + sy)  + 
+                            x * scale + sx + pos.x as usize
+                        ] = c;
                     }
                 }
             }
@@ -412,6 +415,7 @@ impl Roads2 {
             position: 0.0,
             buffer: vec![0; (w * h) as usize],
             dir: Vec2::ZERO,
+            camera_depth: 1.0 / ((FIELD_OF_VIEW / 2.0) * core::f32::consts::PI / 180.0).tan(),
         }
     }
 
@@ -426,7 +430,7 @@ impl Roads2 {
         camera_depth: f32,
         road_width: f32,
         bottom: bool,
-    ) -> Option<IVec3> {
+    ) -> Option<(IVec3, f32)> {
         let cam = p - cam_pos;
 
         let hw = self.size.x as f32 / 2.0;
@@ -442,7 +446,7 @@ impl Roads2 {
             (screen_scale * road_width * hw) as i32,
         );
         // log(&format!("{p:#} {y} {screen_scale}"));
-        Some(screen)
+        Some((screen, screen_scale))
     }
 
     fn find_segment(&mut self, z: f32) -> usize {
@@ -462,22 +466,22 @@ impl Roads2 {
             self.position -= track_length as f32;
         }
 
-        let camera_depth: f32 = 1.0 / ((FIELD_OF_VIEW / 2.0) * core::f32::consts::PI / 180.0).tan();
         let resolution: f32 = self.size.y as f32 / 480.0;
 
-        let player_z: f32 = CAMERA_HEIGHT * camera_depth;
+        let player_z: f32 = CAMERA_HEIGHT * self.camera_depth;
 
         let mut x = 0.0;
         // let mut dx = 0.0;
 
         let base_segment = self.find_segment(self.position);
-        // log(&format!("pos {} base {base_segment}", self.position));
+        crate::utils::log(&format!(
+            "pos {} base {base_segment} {}",
+            self.position, self.segments[base_segment].index
+        ));
 
         // sky
-        self.buffer[0..=(self.size.y >> 1) as usize * self.size.x as usize].fill(colu32(0xff5dc3ff));
-        // b.fill(0xffffffff);
-        // self.buffer.data().fill(0xff);
-        // log_value(&ctx);
+        self.buffer[0..=(self.size.y >> 1) as usize * self.size.x as usize]
+            .fill(colu32(0xff5dc3ff));
         // grass
         self.buffer[(self.size.y >> 1) as usize * self.size.x as usize..].fill(
             // 0xff0000ff
@@ -510,15 +514,15 @@ impl Roads2 {
                 );
                 let cam2 = cam - vec3(0.0, 0.0, 0.0);
                 (
-                    self.project(seg.p1, cam, camera_depth, ROAD_WIDTH, false),
-                    self.project(seg2.p1, cam2, camera_depth, ROAD_WIDTH, false),
+                    self.project(seg.p1, cam, self.camera_depth, ROAD_WIDTH, false),
+                    self.project(seg2.p1, cam2, self.camera_depth, ROAD_WIDTH, false),
                 )
             };
 
             // x += dx;
 
             // behind us
-            if let (Some(s1), Some(s2)) = (s1, s2) {
+            if let (Some((s1, z1)), Some((s2, z2))) = (s1, s2) {
                 // if s2.y > maxy {
                 //     // clip by (already rendered) segment
                 //     continue;
@@ -551,18 +555,8 @@ impl Roads2 {
                 let l_slope = ((bl - tl).x as f32) / dy as f32;
                 let r_slope = ((br - tr).x as f32) / dy as f32;
 
-                if seg_i % 50 == 0 && n <= 100 {
-                    draw_bitmap(
-                        &mut self.buffer,
-                        self.size.x as usize,
-                        self.size.y as usize,
-                        tl,
-                        &coconut,
-                        0xFFFFFFFF,
-                        1,
-                    );
-                }
-
+                let is_tree = seg_i % 50 == 25 && n < 80;
+               
                 // log(&format!("{dy} {tl} {tr} {bl} {br}"));
 
                 const RUMBLE_WIDTH: f32 = 0.05;
@@ -597,6 +591,9 @@ impl Roads2 {
                             // center line
                             col32f(0xff, 0xff, 0xff, fog)
                         } else {
+                            if is_tree {
+                                col32f(0x00, 0xff, 0xff, fog)
+                            } else
                             // road segment
                             if dark {
                                 col32f(0x92, 0x97, 0x93, fog)
@@ -608,6 +605,22 @@ impl Roads2 {
                         self.buffer[((py) * self.size.x + p) as usize] = c; // (c as f32 * fog) as u32;
                     }
                 }
+
+                if is_tree {
+                    let spr_w = ((z1 * s1.z as f32 * self.size.x as f32 * 0.1) as i32).max(1);
+                    println!("{n} {z1} {spr_w}" );
+                    draw_bitmap(
+                        &mut self.buffer,
+                        self.size.x as usize,
+                        self.size.y as usize,
+                        s1.xy() - ivec2(s1.z + coconut.w as i32 * spr_w / 2, coconut.h as i32 * spr_w),
+                        &coconut,
+                        0xFFFFFFFF,
+                        // 3
+                        spr_w as usize,
+                    );
+                }
+
             }
         }
     }
