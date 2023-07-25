@@ -2,7 +2,7 @@ mod fire;
 pub mod utils;
 mod plasma;
 mod tunnel;
-mod roads2;
+pub mod roads2;
 
 use wasm_bindgen::prelude::wasm_bindgen;
 
