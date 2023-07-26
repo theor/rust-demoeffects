@@ -2,11 +2,12 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 use bevy::math::*;
 
-use crate::utils::{col32f, colu32};
+use crate::utils::{col32f, colu32, col32};
 
 struct Seg {
     index: usize,
     p1: Vec3,
+    screen: (IVec3, f32),
     // p2: Vec3,
 }
 
@@ -341,18 +342,22 @@ fn draw_bitmap(
     transparent: u32,
     scale: f32,
 ) {
+    let scale_ceil = scale.ceil();
+    let mut skipped = 0;
+    let mut total = 0;
     for y in 0..bmp.h {
         
         for x in 0..bmp.w {
             
             let c = bmp.data[bmp.w * y + x];
             if c != transparent {
-                for sy in 0..scale.ceil() as usize {
+                for sy in 0..scale_ceil as usize {
                     let py = (((scale * y as f32)).ceil() as i32 + pos.y as i32 + sy as i32) as i32;
-                    if py < 0 || py as usize >= h { continue }
-                    for sx in 0..scale.ceil() as usize {
+                    total += scale_ceil as usize;
+                    if py < 0 || py as usize >= h { skipped += scale_ceil as usize; continue }
+                    for sx in 0..scale_ceil as usize {
                         let px = (x as f32 * scale).ceil() as i32 + sx as i32 + pos.x as i32;
-                        if px < 0 || px as usize >= w { continue }
+                        if px < 0 || px as usize >= w { skipped += 1; continue }
                         b[
                             w *  py as usize + 
                             px as usize
@@ -362,6 +367,7 @@ fn draw_bitmap(
             }
         }
     }
+    println!("skipped {skipped}/{total}")
 }
 
 // fog is 0..100
@@ -399,6 +405,7 @@ impl Roads2 {
                     0.0,
                     n as f32 * SEGMENT_LENGTH as f32,
                 ),
+                screen: Default::default(),
                 // p2: vec3(
                 //     400.0 * ((n+1) as f32 / 10.0).sin(),
                 //     0.0,
@@ -480,13 +487,13 @@ impl Roads2 {
         // ));
 
         // sky
-        self.buffer[0..=(self.size.y >> 1) as usize * self.size.x as usize]
-            .fill(colu32(0xff5dc3ff));
+        self.buffer[0..=((self.size.y >> 1) + 5) as usize * self.size.x as usize]
+            .fill(col32((0, 147, 255)));
         // grass
-        self.buffer[(self.size.y >> 1) as usize * self.size.x as usize..].fill(
-            // 0xff0000ff
-            colu32(0xff7a9c86),
-        );
+        // self.buffer[(self.size.y >> 1) as usize * self.size.x as usize..].fill(
+        //     // 0xff0000ff
+        //     colu32(if dark { 0xff7a6c86} else {0xffcedeef}),
+        // );
         let mut maxy = self.size.y as i32;
 
         for n in 0..DRAW_DISTANCE {
@@ -518,11 +525,13 @@ impl Roads2 {
                     self.project(seg2.p1, cam2, self.camera_depth, ROAD_WIDTH, false),
                 )
             };
+            let is_tree = seg_i % 50 == 25 && n < 80;
 
             // x += dx;
 
             // behind us
             if let (Some((s1, z1)), Some((s2, z2))) = (s1, s2) {
+                self.segments[seg_i].screen = (s1,z1);
                 // if s2.y > maxy {
                 //     // clip by (already rendered) segment
                 //     continue;
@@ -555,7 +564,6 @@ impl Roads2 {
                 let l_slope = ((bl - tl).x as f32) / dy as f32;
                 let r_slope = ((br - tr).x as f32) / dy as f32;
 
-                let is_tree = seg_i % 50 == 25 && n < 80;
                
                 // log(&format!("{dy} {tl} {tr} {bl} {br}"));
 
@@ -573,6 +581,14 @@ impl Roads2 {
                     // log(&format!("  {l:?} {r:?}"));
                     // log(&format!("    py {py}"));
                     let lw = r.x - l.x;
+                    for p in 0..(l.x).min(self.size.x) {
+                        self.buffer[((py) * self.size.x + p) as usize] = if dark { col32((239,222,206)) } else { col32((230,214,197)) };
+
+                    }
+                    for p in r.x..self.size.x as i32 {
+                        self.buffer[((py) * self.size.x + p) as usize] = if dark { col32((239,222,206)) } else { col32((230,214,197)) };
+
+                    }
                     for p in l.x..r.x {
                         if !(0..self.size.x as i32).contains(&p) {
                             continue;
@@ -606,22 +622,28 @@ impl Roads2 {
                     }
                 }
 
-                if is_tree {
-                    let spr_w = ((z1 * s1.z as f32 * self.size.x as f32 * 0.1)).max(0.1);
-                    // println!("{n} {z1} {spr_w}" );
-                    draw_bitmap(
-                        &mut self.buffer,
-                        self.size.x as usize,
-                        self.size.y as usize,
-                        s1.xy() - ivec2(s1.z + (coconut.w as f32 * spr_w / 2.0) as i32, (coconut.h as f32 * spr_w) as i32),
-                        &coconut,
-                        0xFFFFFFFF,
-                        // 3
-                        spr_w,
-                    );
-                }
-
             }
+        }
+        
+        for n in (0..DRAW_DISTANCE).rev() {
+            let seg_i = (self.segments[base_segment].index + n as usize) % self.segments.len();
+let seg = &self.segments[seg_i];
+            let is_tree = seg_i % 5 == 0 && n < 80;
+            if is_tree {
+                let spr_w = ((seg.screen.1 * seg.screen.0.z as f32 * self.size.x as f32 * 0.1)).max(0.1);
+                // println!("{n} {} {spr_w}", seg.screen.0 );
+                draw_bitmap(
+                    &mut self.buffer,
+                    self.size.x as usize,
+                    self.size.y as usize,
+                    seg.screen.0.xy() - ivec2(seg.screen.0.z + ((coconut.w + 50) as f32 * spr_w / 2.0) as i32, ((coconut.h as f32 - 5.0) * spr_w) as i32),
+                    &coconut,
+                    0xFFFFFFFF,
+                    // 3
+                    spr_w,
+                );
+            }
+
         }
     }
 }

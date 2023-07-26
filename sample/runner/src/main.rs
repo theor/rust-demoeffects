@@ -37,13 +37,14 @@ fn main() {
                 } else {
                     0
                 },
-                if window.is_key_down(Key::Down) {
-                    -1
-                } else if window.is_key_down(Key::Up) {
-                    1
-                } else {
-                    0
-                },
+                1
+                // if window.is_key_down(Key::Down) {
+                //     -1
+                // } else if window.is_key_down(Key::Up) {
+                //     1
+                // } else {
+                //     0
+                // },
             );
         }
         // for i in buffer.iter_mut() {
