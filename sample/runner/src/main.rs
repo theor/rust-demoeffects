@@ -12,7 +12,7 @@ fn main() {
         "Test - ESC to exit",
         WIDTH,
         HEIGHT,
-        WindowOptions::default(),
+        WindowOptions   {topmost: true, resize: true, scale_mode: minifb::ScaleMode::AspectRatioStretch, ..WindowOptions::default()},
     )
     .unwrap_or_else(|e| {
         panic!("{}", e);

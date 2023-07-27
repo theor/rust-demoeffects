@@ -1172,28 +1172,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5ea92a5b6195c6ef2a0295ea818b312502c6fc94dde986c5553242e18fd4ce2"
 
 [[package]]
-name = "rillus"
-version = "0.0.0"
-dependencies = [
- "console_error_panic_hook",
- "proc-macro2",
- "rillus-macros",
- "serde",
- "serde-wasm-bindgen",
- "wasm-bindgen",
- "wasm-bindgen-test",
- "wee_alloc",
-]
-
-[[package]]
-name = "rillus-macros"
-version = "0.0.0"
-dependencies = [
- "quote",
- "syn",
-]
-
-[[package]]
 name = "runner"
 version = "0.1.0"
 dependencies = [
@@ -1277,17 +1255,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e8c8cf938e98f769bc164923b06dce91cea1751522f46f8466461af04c9027d"
 dependencies = [
  "serde_derive",
-]
-
-[[package]]
-name = "serde-wasm-bindgen"
-version = "0.4.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3b4c031cd0d9014307d82b8abf653c0290fbdaeb4c02d00c63cf52f728628bf"
-dependencies = [
- "js-sys",
- "serde",
- "wasm-bindgen",
 ]
 
 [[package]]

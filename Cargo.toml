@@ -1,7 +1,8 @@
 [workspace]
 resolver = "2"
-members = ["rillus", "rillus-macros", "sample/sample-rust", "sample/runner"]
+members = ["sample/sample-rust", "sample/runner"]
 
 [profile.release]
 # Tell `rustc` to optimize for small code size.
 opt-level = "s"
+debug = 1

@@ -1,23 +1,26 @@
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use bevy::math::*;
-use crate::{utils::{col32, col32f}, sprites, bitmap::draw_bitmap};
+use crate::{utils::{col32, col32f, lerp}, sprites, bitmap::{draw_bitmap, Bitmap}};
 
 struct Seg {
     index: usize,
     p1: Vec3,
     screen: (IVec3, f32),
+    clip: i32,
     // p2: Vec3,
 }
 
 #[wasm_bindgen]
 pub struct Roads2 {
+    background: Vec<u32>,
     buffer: Vec<u32>,
     size: IVec2,
     segments: Vec<Seg>,
     position: f32,
     dir: Vec2,
     camera_depth: f32,
+    player_y: f32,
 }
 
 
@@ -33,7 +36,7 @@ const SEGMENT_COUNT: i32 = 500;
 #[wasm_bindgen]
 impl Roads2 {
     #[wasm_bindgen(constructor)]
-    pub fn new(w: u32, h: u32) -> Self {
+    pub fn new(w: u32, h: u32, bg: &[u32]) -> Self {
         // let document = web_sys::window().unwrap().document().unwrap();
         // let canvas = document.get_element_by_id(canvas_id).unwrap();
         // let canvas: web_sys::HtmlCanvasElement = canvas
@@ -50,10 +53,11 @@ impl Roads2 {
         let mut segments = Vec::with_capacity(SEGMENT_COUNT as usize);
         for n in 0..segments.capacity() {
             segments.push(Seg {
+                clip: 0,
                 index: n,
                 p1: vec3(
-                    800.0 * (n as f32 / 10.0).sin() + (n as f32 / 121.0).cos() * 100.0,
-                    0.0,
+                    800.0 * (n as f32 / 10.0).sin() + (n as f32 / 121.0).cos() * 600.0,
+                    (n as f32 / 31.0).sin() * (n as f32 / 42.0).cos() * SEGMENT_LENGTH as f32 * 7.0,
                     n as f32 * SEGMENT_LENGTH as f32,
                 ),
                 screen: Default::default(),
@@ -65,15 +69,28 @@ impl Roads2 {
             });
         }
 
-        // log(&format!("segs: {}", segments.len()));
+        let bg = bg.iter().cloned()
+        // .map(|u| {
+        //     0xFF000000 |  // A
+        //     // arGb -> abGr
+        //     (u & 0xFF00) >> 0 |
+        //     // argB ->aBgr
+        //     ((u & 0xFF) << 16) |
+        //     // aRgb-> abgR
+        //     ((u & 0xFF0000)>> 16 )
+        // })
+        .collect();
+        crate::utils::log(&format!("segs: {:?}", bg));
 
         Self {
+            player_y: 0.0,
             size: ivec2(w as i32, h as i32),
             segments,
             position: 0.0,
             buffer: vec![0; (w * h) as usize],
             dir: Vec2::ZERO,
             camera_depth: 1.0 / ((FIELD_OF_VIEW / 2.0) * core::f32::consts::PI / 180.0).tan(),
+            background: bg,
         }
     }
 
@@ -113,9 +130,6 @@ impl Roads2 {
     }
 
     pub fn update(&mut self, time: f32, dir_x: i8, dir_y: i8) {
-        // let mut bb = self.buffer.data().0;
-        // bb.fill(0xff);
-        // let b = as_u32_slice(&mut bb);
         let track_length = SEGMENT_COUNT * SEGMENT_LENGTH;
         self.dir.x = (self.dir.x + dir_x as f32 * 0.1).clamp(-1.0, 1.0);
 
@@ -124,11 +138,14 @@ impl Roads2 {
             self.position -= track_length as f32;
         }
 
-        let resolution: f32 = self.size.y as f32 / 480.0;
+        // let resolution: f32 = self.size.y as f32 / 480.0;
 
         let player_z: f32 = CAMERA_HEIGHT * self.camera_depth;
+        let player_percent = (self.position+player_z) % SEGMENT_LENGTH as f32 / SEGMENT_LENGTH as f32;
+        let player_segment = self.find_segment(self.position + player_z);
+        self.player_y = lerp( self.segments[player_segment].p1.y..=self.segments[(player_segment+1) % SEGMENT_COUNT as usize].p1.y, player_percent);
 
-        let mut x = 0.0;
+        let x = 0.0;
         // let mut dx = 0.0;
 
         let base_segment = self.find_segment(self.position);
@@ -138,8 +155,14 @@ impl Roads2 {
         // ));
 
         // sky
-        self.buffer[0..=((self.size.y >> 1) + 5) as usize * self.size.x as usize]
-            .fill(col32((0, 147, 255)));
+        draw_bitmap(&mut self.buffer,
+            self.size.x as usize,
+            self.size.y as usize, ivec2(0, -20), 
+            &Bitmap { data: self.background.as_slice(), w: 505, h: 200 },
+            // &sprites::CLOUDS,
+             0x00000000, 1.5, false, std::i32::MAX);
+      
+        // self.buffer.fill(col32((0, 147, 255)));
         // grass
         // self.buffer[(self.size.y >> 1) as usize * self.size.x as usize..].fill(
         //     // 0xff0000ff
@@ -152,7 +175,10 @@ impl Roads2 {
             // if n <= 8 { continue }
             // if n != 10 { continue }
             let seg_i = (self.segments[base_segment].index + n as usize) % self.segments.len();
+{
+    self.segments[seg_i].clip = maxy;
 
+}
             // if n == 0 {
             //     log(&format!("t {time} n {n} seg {seg} pos {}", self.position));
             // }
@@ -167,7 +193,7 @@ impl Roads2 {
                 // if looped { log("looped")}
                 let cam = Vec3::new(
                     self.dir.x * ROAD_WIDTH - x,
-                    CAMERA_HEIGHT,
+                    CAMERA_HEIGHT + self.player_y,
                     self.position - if looped { track_length as f32 } else { 0.0 },
                 );
                 let cam2 = cam - vec3(0.0, 0.0, 0.0);
@@ -176,17 +202,15 @@ impl Roads2 {
                     self.project(seg2.p1, cam2, self.camera_depth, ROAD_WIDTH, false),
                 )
             };
-            let is_tree = seg_i % 50 == 25 && n < 80;
-
             // x += dx;
 
             // behind us
-            if let (Some((s1, z1)), Some((s2, z2))) = (s1, s2) {
+            if let (Some((s1, z1)), Some((s2, _z2))) = (s1, s2) {
                 self.segments[seg_i].screen = (s1, z1);
-                // if s2.y > maxy {
-                //     // clip by (already rendered) segment
-                //     continue;
-                // }
+                if s2.y > maxy || s2.y > s1.y {
+                    // clip by (already rendered) segment
+                    continue;
+                }
 
                 let fog_d = n as f32 / DRAW_DISTANCE as f32;
                 let fog = (100.0 / (fog_d * fog_d * 5.0).exp()) as u32;
@@ -218,9 +242,6 @@ impl Roads2 {
                 // log(&format!("{dy} {tl} {tr} {bl} {br}"));
 
                 const RUMBLE_WIDTH: f32 = 0.05;
-                // fix that. different slopes mean non horizontal lines means incomplete rect
-                // for (l, r) in Bresenham::new((tl.x, tl.y), (bl.x, bl.y))
-                //     .zip(Bresenham::new((tr.x, tr.y), (br.x, br.y)))
                 for y in 0..dy {
                     let py = s2.y + y;
                     if py >= self.size.y {
@@ -228,8 +249,6 @@ impl Roads2 {
                     }
                     let l = bl + ivec2((y as f32 * l_slope) as i32, y);
                     let r = br + ivec2((y as f32 * r_slope) as i32, y);
-                    // log(&format!("  {l:?} {r:?}"));
-                    // log(&format!("    py {py}"));
                     let lw = r.x - l.x;
                     for p in 0..(l.x).min(self.size.x) {
                         self.buffer[((py) * self.size.x + p) as usize] = if dark {
@@ -263,9 +282,6 @@ impl Roads2 {
                             // center line
                             col32f(0xff, 0xff, 0xff, fog)
                         } else {
-                            if is_tree {
-                                col32f(0x00, 0xff, 0xff, fog)
-                            } else
                             // road segment
                             if dark {
                                 col32f(0x92, 0x97, 0x93, fog)
@@ -301,6 +317,24 @@ impl Roads2 {
                     0xFFFFFFFF,
                     // 3
                     spr_w,
+                    false,
+                    seg.clip,
+                );
+                draw_bitmap(
+                    &mut self.buffer,
+                    self.size.x as usize,
+                    self.size.y as usize,
+                    seg.screen.0.xy()
+                        - ivec2(
+                            - seg.screen.0.z - ((sprites::COCONUT.w + 10) as f32 * spr_w / 2.0) as i32,
+                            ((sprites::COCONUT.h as f32 - 5.0) * spr_w) as i32,
+                        ),
+                    &sprites::COCONUT,
+                    0xFFFFFFFF,
+                    // 3
+                    spr_w,
+                    true,
+                    seg.clip,
                 );
             }
         }

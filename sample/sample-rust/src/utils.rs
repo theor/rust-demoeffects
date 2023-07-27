@@ -189,7 +189,7 @@ pub(crate) fn colu32(c:u32) -> u32 {
         col32((r,g,b))
     } else { c }
 }
-pub(crate) fn col32((r, g, b): (u8, u8, u8)) -> u32 {
+pub(crate) const fn col32((r, g, b): (u8, u8, u8)) -> u32 {
     if cfg!(feature="argb") {
         255 << 24 | (r as u32) << 16 | (g as u32) << 8 | (b as u32)
     } else {
