@@ -201,7 +201,6 @@ impl Roads2 {
                 let seg = &self.segments[seg_i];
                 let seg2 = &self.segments[(seg_i + 1) % self.segments.len()];
                 let looped = seg.index < self.segments[base_segment].index;
-                if looped { crate::utils::log("looped")}
                 let cam = Vec3::new(
                     self.dir.x * ROAD_WIDTH - x,
                     CAMERA_HEIGHT + self.player_y,

@@ -26,8 +26,9 @@ impl StatefulFire {
 
         for j in (y as i32 - r as i32).max(0)..(y as i32 + r as i32).min(self.h as i32 - 1) {
             for i in (x as i32 - r as i32).max(0)..(x as i32 + r as i32).min(self.w as i32 - 1) {
-                if (j - y as i32).pow(2) + (i - x as i32).pow(2) < rr {
-                    self.fire[j as usize * self.w + i as usize] = 36 - rng.u8(0..10);
+                let r_squared = (j - y as i32).pow(2) + (i - x as i32).pow(2);
+                if r_squared < rr {
+                    self.fire[j as usize * self.w + i as usize] = ((rr - r_squared.min(rr - 1)) as f32 / rr as f32 * 36. * 2.) as u8;//rng.u8(0..10);
                 }
             }
         }

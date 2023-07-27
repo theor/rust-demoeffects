@@ -299,4 +299,4 @@ pub(crate) const {name.ToUpperInvariant()}: Bitmap = Bitmap {{
 
 // Print("coconut", 30, 80, argb_CoconutTree.Select(x => x | 0xFF000000).ToArray());
 Print("coconut", 30, 80, Convert(argb_CoconutTree, x => ArgbToABGR(x) | 0xFF000000));
-Print("clouds", 505, 200, Convert(argb_Clouds, x => ArgbToABGR(x) | 0xFF000000));
+// Print("clouds", 505, 200, Convert(argb_Clouds, x => ArgbToABGR(x) | 0xFF000000));

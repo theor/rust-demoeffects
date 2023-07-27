@@ -7,5 +7,6 @@ edition = "2021"
 
 [dependencies]
 image = {version = "0.24.6", features=["png"], default-features = false }
+imageproc = "0.23.0"
 minifb = "0.24"
 sample-rust = { path="../sample-rust", features=["argb"]}
