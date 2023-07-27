@@ -3,7 +3,6 @@ pub mod utils;
 mod bitmap;
 mod plasma;
 mod tunnel;
-mod sprites;
 pub mod roads2;
 
 use wasm_bindgen::prelude::wasm_bindgen;

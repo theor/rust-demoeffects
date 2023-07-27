@@ -4,8 +4,6 @@ use core::ops::Mul;
 use core::ops::RangeInclusive;
 use core::ops::Sub;
 
-use wasm_bindgen::prelude::wasm_bindgen;
-use wasm_bindgen::JsValue;
 
 /// Helper trait to implement [`lerp`] and [`remap`].
 pub trait One {
@@ -86,109 +84,119 @@ where
 }
 
 #[cfg(all(target_arch = "wasm32", debug_assertions))]
-#[wasm_bindgen]
+#[wasm_bindgen::prelude::wasm_bindgen]
 extern "C" {
 
-    #[wasm_bindgen(js_namespace = console)]
+    #[wasm_bindgen::prelude::wasm_bindgen(js_namespace = console)]
     pub(crate) fn log(s: &str);
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    pub(crate) fn log_value(x: &JsValue);
+    #[wasm_bindgen::prelude::wasm_bindgen(js_namespace = console, js_name = log)]
+    pub(crate) fn log_value(x: &wasm_bindgen::JsValue);
 }
 
 #[cfg(all(target_arch = "wasm32", not(debug_assertions)))]
-pub(crate) fn log(s: &str) {}
+pub(crate) fn log(_s: &str) {}
 #[cfg(all(target_arch = "wasm32", not(debug_assertions)))]
-pub(crate) fn log_value(x: &JsValue) {}
+#[allow(dead_code)]
+pub(crate) fn log_value(_x: &wasm_bindgen::JsValue) {}
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn log(s: &str) {
     println!("{}", s);
 }
 
-pub(crate) fn as_u8_slice(v: &[u32]) -> &[u8] {
-    unsafe {
-        core::slice::from_raw_parts(
-            v.as_ptr() as *const u8,
-            v.len() * core::mem::size_of::<u32>(),
-        )
-    }
-}
+// pub(crate) fn as_u8_slice(v: &[u32]) -> &[u8] {
+//     unsafe {
+//         core::slice::from_raw_parts(
+//             v.as_ptr() as *const u8,
+//             v.len() * core::mem::size_of::<u32>(),
+//         )
+//     }
+// }
 
-pub(crate) fn as_u32_slice(v: &mut [u8]) -> &mut [u32] {
-    unsafe {
-        core::slice::from_raw_parts_mut(
-            v.as_ptr() as *mut u32,
-            v.len() * core::mem::size_of::<u8>() / core::mem::size_of::<u32>(),
-        )
-    }
-}
+// pub(crate) fn as_u32_slice_mut(v: &mut [u8]) -> &mut [u32] {
+//     unsafe {
+//         core::slice::from_raw_parts_mut(
+//             v.as_ptr() as *mut u32,
+//             v.len() * core::mem::size_of::<u8>() / core::mem::size_of::<u32>(),
+//         )
+//     }
+// }
 
-pub trait Lut {
-    fn sin_lut(&self, lut: &SinCosLut) -> Self;
-    fn cos_lut(&self, lut: &SinCosLut) -> Self;
-}
+// pub(crate) fn as_u32_slice(v: &[u8]) -> &[u32] {
+//     unsafe {
+//         core::slice::from_raw_parts(
+//             v.as_ptr() as *const u32,
+//             v.len() * core::mem::size_of::<u8>() / core::mem::size_of::<u32>(),
+//         )
+//     }
+// }
 
-impl Lut for f32 {
-    fn sin_lut(&self, lut: &SinCosLut) -> f32 {
-        lut.sin(*self)
-    }
-    fn cos_lut(&self, lut: &SinCosLut) -> f32 {
-        lut.cos(*self)
-    }
-}
+// pub trait Lut {
+//     fn sin_lut(&self, lut: &SinCosLut) -> Self;
+//     fn cos_lut(&self, lut: &SinCosLut) -> Self;
+// }
 
-const TWO_PI: f32 = core::f32::consts::PI * 2.0;
+// impl Lut for f32 {
+//     fn sin_lut(&self, lut: &SinCosLut) -> f32 {
+//         lut.sin(*self)
+//     }
+//     fn cos_lut(&self, lut: &SinCosLut) -> f32 {
+//         lut.cos(*self)
+//     }
+// }
 
-// #[wasm_bindgen]
-pub struct SinCosLut {
-    sins: Vec<f32>,
-    coss: Vec<f32>,
-}
+// const TWO_PI: f32 = core::f32::consts::PI * 2.0;
 
-// #[wasm_bindgen]
-impl SinCosLut {
-    // #[wasm_bindgen(constructor)]
-    pub fn new(sample_count: usize) -> Self {
-        let mut sins = vec![0.0; sample_count];
-        let mut coss = vec![0.0; sample_count];
+// // #[wasm_bindgen]
+// pub struct SinCosLut {
+//     sins: Vec<f32>,
+//     coss: Vec<f32>,
+// }
 
-        for i in 0..sample_count {
-            let f = (i as f32 / sample_count as f32) * TWO_PI;
-            sins[i] = f.sin();
-            coss[i] = f.cos();
-        }
+// // #[wasm_bindgen]
+// impl SinCosLut {
+//     // #[wasm_bindgen(constructor)]
+//     pub fn new(sample_count: usize) -> Self {
+//         let mut sins = vec![0.0; sample_count];
+//         let mut coss = vec![0.0; sample_count];
 
-        Self { sins, coss }
-    }
+//         for i in 0..sample_count {
+//             let f = (i as f32 / sample_count as f32) * TWO_PI;
+//             sins[i] = f.sin();
+//             coss[i] = f.cos();
+//         }
 
-    // #[wasm_bindgen]
-    #[inline(always)]
-    pub(crate) fn sin(&self, f: f32) -> f32 {
-        // f.sin()
-        let s = f.signum();
-        let f = (f.abs() * self.sins.len() as f32 / TWO_PI) as usize;
-        self.sins[f % self.sins.len()] * s
-    }
-    // #[wasm_bindgen]
-    #[inline(always)]
-    pub(crate) fn cos(&self, f: f32) -> f32 {
-        // f.cos()
-        let f = (f.abs() * self.coss.len() as f32 / TWO_PI) as usize;
-        self.coss[f % self.coss.len()]
-    }
-}
+//         Self { sins, coss }
+//     }
 
-pub(crate) fn colu32(c:u32) -> u32 {
-    if cfg!(feature="argb") {
-        // from abgr
-        let (r,g,b) = (
-            ((c & 0x000000FF) >> 0) as u8,
-            ((c & 0x0000FF00) >> 8) as u8,
-            ((c & 0x00FF0000) >> 16) as u8,
-        );
-        col32((r,g,b))
-    } else { c }
-}
+//     // #[wasm_bindgen]
+//     #[inline(always)]
+//     pub(crate) fn sin(&self, f: f32) -> f32 {
+//         // f.sin()
+//         let s = f.signum();
+//         let f = (f.abs() * self.sins.len() as f32 / TWO_PI) as usize;
+//         self.sins[f % self.sins.len()] * s
+//     }
+//     // #[wasm_bindgen]
+//     #[inline(always)]
+//     pub(crate) fn cos(&self, f: f32) -> f32 {
+//         // f.cos()
+//         let f = (f.abs() * self.coss.len() as f32 / TWO_PI) as usize;
+//         self.coss[f % self.coss.len()]
+//     }
+// }
+
+// pub(crate) fn colu32(c:u32) -> u32 {
+//     if cfg!(feature="argb") {
+//         // from abgr
+//         let (r,g,b) = (
+//             ((c & 0x000000FF) >> 0) as u8,
+//             ((c & 0x0000FF00) >> 8) as u8,
+//             ((c & 0x00FF0000) >> 16) as u8,
+//         );
+//         col32((r,g,b))
+//     } else { c }
+// }
 pub(crate) const fn col32((r, g, b): (u8, u8, u8)) -> u32 {
     if cfg!(feature="argb") {
         255 << 24 | (r as u32) << 16 | (g as u32) << 8 | (b as u32)

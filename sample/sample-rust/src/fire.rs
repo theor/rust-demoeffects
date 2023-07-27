@@ -1,14 +1,5 @@
 use wasm_bindgen::prelude::wasm_bindgen;
 
-#[inline(always)]
-fn set_bytes<'a>(b: &mut [u8], i: usize, bytes: &[u8; 3]) {
-    // web_sys::console::log_1(&JsValue::from_f64(bytes[0] as f64));
-    b[i] = bytes[0];
-    b[i + 1] = bytes[1];
-    b[i + 2] = bytes[2];
-    b[i + 3] = 255;
-}
-
 #[wasm_bindgen]
 pub enum FirePalette {
     Default,

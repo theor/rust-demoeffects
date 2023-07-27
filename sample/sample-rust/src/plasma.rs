@@ -136,8 +136,6 @@ impl Plasma {
     }
 
     pub fn update(&mut self, time: f32) {
-        log(&format!("asdasd {time}"));
-
         let mut noise = FastNoise::seeded(42);
         noise.set_noise_type(NoiseType::SimplexFractal);
         noise.set_fractal_type(FractalType::FBM);
@@ -145,7 +143,6 @@ impl Plasma {
         noise.set_fractal_gain(0.6);
         noise.set_fractal_lacunarity(0.25);
         noise.set_frequency(1.1);
-        let a = vec2(self.w as f32 / self.h as f32, 1.0);
         for y in 0..self.h {
             for x in 0..self.w {
                 let i = y * self.w + x;

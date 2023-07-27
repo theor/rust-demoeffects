@@ -6,5 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+image = {version = "0.24.6", features=["png"], default-features = false }
 minifb = "0.24"
 sample-rust = { path="../sample-rust", features=["argb"]}

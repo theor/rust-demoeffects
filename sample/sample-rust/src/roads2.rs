@@ -1,7 +1,7 @@
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use bevy::math::*;
-use crate::{utils::{col32, col32f, lerp}, sprites, bitmap::{draw_bitmap, Bitmap}};
+use crate::{utils::{col32, col32f, lerp}, bitmap::{draw_bitmap, Bitmap}};
 
 struct Seg {
     index: usize,
@@ -14,6 +14,7 @@ struct Seg {
 #[wasm_bindgen]
 pub struct Roads2 {
     background: Vec<u32>,
+    tree: Vec<u32>,
     buffer: Vec<u32>,
     size: IVec2,
     segments: Vec<Seg>,
@@ -26,17 +27,22 @@ pub struct Roads2 {
 
 // fog is 0..100
 
+const COCONUT: IVec2 = IVec2 { 
+    x: 30,
+    y: 80,
+};
+
 const SEGMENT_LENGTH: i32 = 200; // length of a single segment
 const RUMBLE_LENGTH: i32 = 3; // number of lanes
 const FIELD_OF_VIEW: f32 = 100.0; // angle (degrees) for field of view
 const CAMERA_HEIGHT: f32 = 1000.0; // z height of camera
 const ROAD_WIDTH: f32 = 2000.0; // z height of camera
 const DRAW_DISTANCE: i32 = 300;
-const SEGMENT_COUNT: i32 = 500;
+const SEGMENT_COUNT: i32 = 501;
 #[wasm_bindgen]
 impl Roads2 {
     #[wasm_bindgen(constructor)]
-    pub fn new(w: u32, h: u32, bg: &[u32]) -> Self {
+    pub fn new(w: u32, h: u32, bg: &[u32], tree: &[u32]) -> Self {
         // let document = web_sys::window().unwrap().document().unwrap();
         // let canvas = document.get_element_by_id(canvas_id).unwrap();
         // let canvas: web_sys::HtmlCanvasElement = canvas
@@ -80,7 +86,7 @@ impl Roads2 {
         //     ((u & 0xFF0000)>> 16 )
         // })
         .collect();
-        crate::utils::log(&format!("segs: {:?}", bg));
+        // crate::utils::log(&format!("segs: {:?}", bg));
 
         Self {
             player_y: 0.0,
@@ -91,6 +97,7 @@ impl Roads2 {
             dir: Vec2::ZERO,
             camera_depth: 1.0 / ((FIELD_OF_VIEW / 2.0) * core::f32::consts::PI / 180.0).tan(),
             background: bg,
+            tree: tree.iter().cloned().collect(),
         }
     }
 
@@ -129,13 +136,16 @@ impl Roads2 {
         (z as usize / SEGMENT_LENGTH as usize) as usize % l
     }
 
-    pub fn update(&mut self, time: f32, dir_x: i8, dir_y: i8) {
+    pub fn update(&mut self, _time: f32, dir_x: i8, dir_y: i8) {
         let track_length = SEGMENT_COUNT * SEGMENT_LENGTH;
         self.dir.x = (self.dir.x + dir_x as f32 * 0.1).clamp(-1.0, 1.0);
 
         self.position += 150.0 * dir_y as f32; // * ((time * 4.0).sin().powi(2) + 0.5);
         while self.position > track_length as f32 {
             self.position -= track_length as f32;
+        }
+              while self.position < 0 as f32 {
+            self.position += track_length as f32;
         }
 
         // let resolution: f32 = self.size.y as f32 / 480.0;
@@ -154,6 +164,7 @@ impl Roads2 {
         //     self.position, self.segments[base_segment].index
         // ));
 
+        self.buffer.fill(col32((0, 147, 255)));
         // sky
         draw_bitmap(&mut self.buffer,
             self.size.x as usize,
@@ -190,7 +201,7 @@ impl Roads2 {
                 let seg = &self.segments[seg_i];
                 let seg2 = &self.segments[(seg_i + 1) % self.segments.len()];
                 let looped = seg.index < self.segments[base_segment].index;
-                // if looped { log("looped")}
+                if looped { crate::utils::log("looped")}
                 let cam = Vec3::new(
                     self.dir.x * ROAD_WIDTH - x,
                     CAMERA_HEIGHT + self.player_y,
@@ -304,17 +315,19 @@ impl Roads2 {
                 let spr_w =
                     (seg.screen.1 * seg.screen.0.z as f32 * self.size.x as f32 * 0.1).max(0.1);
                 // println!("{n} {} {spr_w}", seg.screen.0 );
+                let coconut_bitmap = 
+                Bitmap { w: COCONUT.x as usize, h: COCONUT.y as usize, data:self.tree.as_slice() };
                 draw_bitmap(
                     &mut self.buffer,
                     self.size.x as usize,
-                    self.size.y as usize,
+                    self.size.y as usize,   
                     seg.screen.0.xy()
                         - ivec2(
-                            seg.screen.0.z + ((sprites::COCONUT.w + 50) as f32 * spr_w / 2.0) as i32,
-                            ((sprites::COCONUT.h as f32 - 5.0) * spr_w) as i32,
+                            seg.screen.0.z + ((COCONUT.x + 50) as f32 * spr_w / 2.0) as i32,
+                            ((COCONUT.y as f32 - 5.0) * spr_w) as i32,
                         ),
-                    &sprites::COCONUT,
-                    0xFFFFFFFF,
+                        &coconut_bitmap,
+                    0,
                     // 3
                     spr_w,
                     false,
@@ -326,11 +339,10 @@ impl Roads2 {
                     self.size.y as usize,
                     seg.screen.0.xy()
                         - ivec2(
-                            - seg.screen.0.z - ((sprites::COCONUT.w + 10) as f32 * spr_w / 2.0) as i32,
-                            ((sprites::COCONUT.h as f32 - 5.0) * spr_w) as i32,
-                        ),
-                    &sprites::COCONUT,
-                    0xFFFFFFFF,
+                            - seg.screen.0.z - ((COCONUT.x + 10) as f32 * spr_w / 2.0) as i32,
+                            ((COCONUT.y as f32 - 5.0) * spr_w) as i32,
+                        ),&coconut_bitmap,
+                    0,
                     // 3
                     spr_w,
                     true,
