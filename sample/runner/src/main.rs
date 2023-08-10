@@ -81,11 +81,22 @@ fn main() {
         println!("init {sample:?}");
         let state = match sample {
             Sample::Stars => {
-                let mut s = sample_rust::tunnel::Stars::new(WIDTH, HEIGHT);
+                let tree = image::open(
+                    "C:\\Users\\theor\\blog-astro\\src\\content\\blog\\rust-wasm-demo-effects\\Ice-export.png",
+                )
+                .unwrap();
+            
+                let tree = imageproc::map::map_colors(&tree, |c| Rgba([c[2], c[1], c[0], c[3]]));
+                let mut s =
+                    sample_rust::tunnel::Stars::new(WIDTH, HEIGHT, as_u32_slice(tree.as_bytes()));
                 let buffer = unsafe { slice::from_raw_parts(s.get_ptr(), WIDTH * HEIGHT) };
-                update(&mut window, |window, _tick, t| {
-                    let (mx,my) = window.get_mouse_pos(minifb::MouseMode::Clamp).unwrap_or_default()    ;
-                    s.update(t, mx / WIDTH as f32, my / HEIGHT as f32, 0.06);
+                update(&mut window, |window, tick, t| {
+                    let (mx, my) = window
+                        .get_mouse_pos(minifb::MouseMode::Clamp)
+                        .unwrap_or_default();
+                    if tick {
+                        s.update(t, mx / WIDTH as f32, my / HEIGHT as f32, 0.06);
+                    }
                     window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
                 })
             }
@@ -105,14 +116,14 @@ fn main() {
             Sample::FireState => {
                 let mut p = sample_rust::fire::StatefulFire::new(WIDTH, HEIGHT);
                 let buffer = unsafe { slice::from_raw_parts(p.get_ptr(), WIDTH * HEIGHT) };
-                let mut m: (u16,u16) = (WIDTH as u16/ 2,WIDTH as u16/ 2);
+                let mut m: (u16, u16) = (WIDTH as u16 / 2, WIDTH as u16 / 2);
                 update(&mut window, |window, _tick, t| {
-                    if let Some((mx,my)) = window.get_mouse_pos(minifb::MouseMode::Clamp){
-// println!("{mx} {my}");
-m = (mx as u16, my as u16);
+                    if let Some((mx, my)) = window.get_mouse_pos(minifb::MouseMode::Clamp) {
+                        // println!("{mx} {my}");
+                        m = (mx as u16, my as u16);
                     }
                     p.update(t, 1, -1, 3);
-                    p.circle(m.0,m.1, 12);
+                    p.circle(m.0, m.1, 12);
                     window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
                 })
             }
@@ -163,7 +174,8 @@ m = (mx as u16, my as u16);
         match state {
             LoopState::Exit => {
                 println!("pos {:?}", window.get_position());
-                return},
+                return;
+            }
             LoopState::Switch => {
                 match sample {
                     Sample::Stars => sample = Sample::Plasma,
