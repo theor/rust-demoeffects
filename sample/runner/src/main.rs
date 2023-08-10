@@ -82,7 +82,7 @@ fn main() {
         let state = match sample {
             Sample::Stars => {
                 let tree = image::open(
-                    "C:\\Users\\theor\\blog-astro\\src\\content\\blog\\rust-wasm-demo-effects\\Ice-export.png",
+                    "C:\\Users\\theor\\blog-astro\\src\\content\\blog\\rust-wasm-demo-effects\\Ice.png",
                 )
                 .unwrap();
             
