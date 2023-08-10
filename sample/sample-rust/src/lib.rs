@@ -5,17 +5,18 @@ pub mod plasma;
 pub mod tunnel;
 pub mod roads2;
 
-use wasm_bindgen::prelude::wasm_bindgen;
-
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-#[wasm_bindgen(start)]
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen(start)]
 fn main() {
     set_panic_hook();
 }
 
+#[cfg(target_arch = "wasm32")]
 fn set_panic_hook() {
     // When the `console_error_panic_hook` feature is enabled, we can call the
     // `set_panic_hook` function at least once during initialization, and then

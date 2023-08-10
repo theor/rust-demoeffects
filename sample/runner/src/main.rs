@@ -24,7 +24,6 @@ enum Sample {
 }
 
 enum LoopState {
-    Continue,
     Exit,
     Switch,
 }
@@ -58,7 +57,7 @@ fn update(mut window: &mut Window, mut cb: impl FnMut(&mut Window, bool, f32)) -
 }
 fn main() {
     // let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
-    let mut sample = Sample::FireState;
+    let mut sample = Sample::Stars;
 
     let mut window = Window::new(
         "Demo effects",
@@ -74,6 +73,7 @@ fn main() {
     .unwrap_or_else(|e| {
         panic!("{}", e);
     });
+    window.set_position(13, 886);
     // Limit to max ~60 fps update rate
     window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
@@ -83,7 +83,7 @@ fn main() {
             Sample::Stars => {
                 let mut s = sample_rust::tunnel::Stars::new(WIDTH, HEIGHT);
                 let buffer = unsafe { slice::from_raw_parts(s.get_ptr(), WIDTH * HEIGHT) };
-                update(&mut window, |window, tick, t| {
+                update(&mut window, |window, _tick, t| {
                     let (mx,my) = window.get_mouse_pos(minifb::MouseMode::Clamp).unwrap_or_default()    ;
                     s.update(t, mx / WIDTH as f32, my / HEIGHT as f32, 0.06);
                     window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
@@ -97,7 +97,7 @@ fn main() {
                     sample_rust::plasma::Palette::RainbowStepped,
                 );
                 let buffer = unsafe { slice::from_raw_parts(p.get_ptr(), WIDTH * HEIGHT) };
-                update(&mut window, |window, tick, t| {
+                update(&mut window, |window, _tick, t| {
                     p.update(t);
                     window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
                 })
@@ -106,7 +106,7 @@ fn main() {
                 let mut p = sample_rust::fire::StatefulFire::new(WIDTH, HEIGHT);
                 let buffer = unsafe { slice::from_raw_parts(p.get_ptr(), WIDTH * HEIGHT) };
                 let mut m: (u16,u16) = (WIDTH as u16/ 2,WIDTH as u16/ 2);
-                update(&mut window, |window, tick, t| {
+                update(&mut window, |window, _tick, t| {
                     if let Some((mx,my)) = window.get_mouse_pos(minifb::MouseMode::Clamp){
 // println!("{mx} {my}");
 m = (mx as u16, my as u16);
@@ -161,8 +161,9 @@ m = (mx as u16, my as u16);
             }
         };
         match state {
-            LoopState::Continue => unreachable!(),
-            LoopState::Exit => return,
+            LoopState::Exit => {
+                println!("pos {:?}", window.get_position());
+                return},
             LoopState::Switch => {
                 match sample {
                     Sample::Stars => sample = Sample::Plasma,

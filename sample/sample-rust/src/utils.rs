@@ -93,12 +93,14 @@ extern "C" {
     pub(crate) fn log_value(x: &wasm_bindgen::JsValue);
 }
 
+#[allow(dead_code)]
 #[cfg(all(target_arch = "wasm32", not(debug_assertions)))]
 pub(crate) fn log(_s: &str) {}
 #[cfg(all(target_arch = "wasm32", not(debug_assertions)))]
 #[allow(dead_code)]
 pub(crate) fn log_value(_x: &wasm_bindgen::JsValue) {}
 
+#[allow(dead_code)]
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn log(s: &str) {
     println!("{}", s);

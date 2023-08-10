@@ -5,7 +5,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 use colorsys::{Hsl, Rgb};
 
-use crate::utils::{col32, lerp, log, remap};
+use crate::utils::{col32, lerp, remap};
 
 #[wasm_bindgen]
 pub enum Step {

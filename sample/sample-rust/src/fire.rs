@@ -18,7 +18,6 @@ pub struct StatefulFire {
 impl StatefulFire {
     #[wasm_bindgen]
     pub fn circle(&mut self, x: u16, y: u16, r: u16) {
-        let mut rng = fastrand::Rng::new();
         if x as usize > self.w || y as usize >= self.h {
             return;
         }

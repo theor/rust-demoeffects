@@ -21,6 +21,7 @@ pub struct Stars {
     c: (usize, usize),
     prev_v: (f32, f32),
     buffer: Vec<u32>,
+    angle: f32,
     // prev_t: f32,
     // rng: fastrand::Rng,
     // palette: Vec<u32>,
@@ -54,6 +55,7 @@ impl Stars {
             stars,
             prev_v: (0.0, 0.0),
             buffer: vec![0; w*h],
+            angle: 0.,
             // prev_t: 0.0,
             // rng,
         }
@@ -62,6 +64,7 @@ impl Stars {
     pub fn get_ptr(&self) -> *const u32 { self.buffer.as_ptr() }
 
     pub fn update(&mut self, t: f32, vx: f32, vy: f32, speed_factor: f32) {
+        self.angle = (t/ 2.).sin() * 10.;
         self.buffer.fill(0);
         let speed = (t / 2.0).sin().powi(2);
 
@@ -83,7 +86,7 @@ impl Stars {
         for (i, s) in self.stars.iter_mut().enumerate() {
             let (sin, cos) = 
             // (0.1 *  i as f32, 0.23 *  i as f32);
-            (s.angle.sin(), s.angle.cos());
+            ((s.angle+speed).sin(), (s.angle+speed).cos());
 
             let rp = rqrt * s.dist;
 

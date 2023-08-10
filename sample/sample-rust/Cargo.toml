@@ -14,7 +14,7 @@ argb = []
 
 [package.metadata.wasm-pack.profile.profiling]
 # previously had just ['-O4']
-wasm-opt = ['-O4', '-g']
+wasm-opt = ['-Z', '-g']
 
 [dependencies]
 wasm-bindgen = "0.2.63"
