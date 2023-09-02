@@ -9,14 +9,20 @@ use wasm_bindgen::prelude::wasm_bindgen;
 // use embedded_graphics::primitives::*;
 
 // use crate::display::Display;
-use crate::{utils::{remap_clamp, lerp, lerp_byte, col32}, bitmap::{draw_bitmap, Bitmap}};
+use crate::{utils::{remap_clamp, lerp, lerp_byte, col32, Sequence, col32f}, bitmap::{draw_bitmap, Bitmap}};
 struct Star {
     angle: f32,
     dist: f32,
     p: bool,
 }
 #[wasm_bindgen]
+pub enum StarsStep {
+    Radial,
+    All,
+}
+#[wasm_bindgen]
 pub struct Stars {
+    step: StarsStep,
     w: usize,
     h: usize,
     stars: Vec<Star>,
@@ -25,15 +31,14 @@ pub struct Stars {
     buffer: Vec<u32>,
     sprite: Vec<u32>,
     // prev_t: f32,
-    // rng: fastrand::Rng,
+    rng: fastrand::Rng,
     // palette: Vec<u32>,
 }
-
 const COUNT: usize = 512;
 #[wasm_bindgen]
 impl Stars {
     #[wasm_bindgen(constructor)]
-    pub fn new(w: usize, h: usize, sprite: &[u32],) -> Self {
+    pub fn new(w: usize, h: usize, sprite: &[u32], step: StarsStep) -> Self {
         //     let mut palette:Vec<u32> = vec![0; 256];
         //     for i in 0..palette.len() {
         //         let c = Rgb::from(Hsl::from((i as f32 / palette.len() as f32 * 360.0, 100.0, 50.0)));
@@ -42,16 +47,18 @@ impl Stars {
         //         // palette[i] = col32(255,0,0);
 
         //     }
-        let mut rng = fastrand::Rng::new();
+        let mut rng = fastrand::Rng::with_seed(42);
+        let mut halton = Sequence::new(111);
         let mut stars = Vec::with_capacity(COUNT);
         for i in 0..COUNT {
             stars.push(Star {
-                angle: rng.f32() * PI * 4.0,
-                dist: rng.f32() * 0.5,
+                angle: rng.f32() * PI * 2.0,
+                dist: rng.f32(),
                 p: i % 127 == 0,
             });
         }
         Self {
+            step,
             w,
             h,
             c: (w / 2, h / 2),
@@ -60,7 +67,7 @@ impl Stars {
             buffer: vec![0; w*h],
             sprite: sprite.iter().cloned().collect(),
             // prev_t: 0.0,
-            // rng,
+            rng,
         }
     }
     #[wasm_bindgen]
@@ -68,6 +75,34 @@ impl Stars {
 
     pub fn update(&mut self, t: f32, vx: f32, vy: f32, speed_factor: f32) {
         self.buffer.fill(0);
+
+        let rqrt = ((self.c.0 * self.c.0 + self.c.1 * self.c.1) as f32).sqrt();
+        match self.step {
+            StarsStep::Radial => {
+             
+        let c = self.c;
+           for (i, s) in self.stars.iter_mut().enumerate() {
+                    s.dist += speed_factor;
+
+                    let (sin, cos) = 
+                    (s.angle.sin(), s.angle.cos());
+
+                    let r = rqrt * s.dist;
+                    let (x, y) = ((r * sin) + c.0 as f32, (r * cos) + c.1 as f32);
+                    let out_x = x < 0.0 || x >= self.w as f32;
+                    let out_y = y < 0.0 || y >= self.h as f32;
+                    if out_x || out_y {
+                        if  s.dist > 1.0 {
+                            s.dist = 0.01; // * self.rng.f32();
+                        }
+                    } else {
+                        self.buffer[x as usize + y as usize * self.w] = 0xFFFFFFFF;
+                    }
+                }
+                return;
+            },
+            _ => {}
+        }
         let speed = (t / 2.0).sin().powi(2);
 
         self.prev_v = (
@@ -103,8 +138,8 @@ impl Stars {
             let out_x = x < 0.0 || x >= self.w as f32;
             let out_y = y < 0.0 || y >= self.h as f32;
             if out_x || out_y {
-                if out_x && out_y {
-                    s.dist = 0.01; // * self.rng.f32();
+                if s.dist > 1.0 {
+                    s.dist = 0.01 * self.rng.f32();
                 }
             } else {
                 if s.p {
@@ -118,9 +153,11 @@ impl Stars {
                      
                     );
                 } else {
-                for (bx, by) in line_drawing::Bresenham::new((xp as i32, yp as i32), (x as i32, y as i32)) {
+                for ((bx, by),v) in line_drawing::XiaolinWu::<f32,i32>::new((xp, yp), (x, y)) {
+                    if bx < 0 || by < 0 || bx >= self.w as i32 || by >= self.h as i32 { continue; }
                     let i = by as usize * self.w + bx as usize;
-                    self.buffer[i]= col32((lerp_byte(0x96..=0xff, speed), lerp_byte(0xd5..=0xff, speed), 0xFF));
+                    self.buffer[i]= //col32((((v * 255.) as u8), 0, 0));
+                    col32f(lerp_byte(0x96..=0xff, speed), lerp_byte(0xd5..=0xff, speed), 0xFF, (v * 100.0) as u32);
                 }
             }
             }

@@ -4,6 +4,7 @@ mod bitmap;
 pub mod plasma;
 pub mod tunnel;
 pub mod roads2;
+pub mod angles;
 
 
 #[global_allocator]

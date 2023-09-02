@@ -214,3 +214,157 @@ pub(crate) fn col32f(r: u8, g: u8, b: u8, fog: u32) -> u32 {
     255 << 24 | (b as u32 * fog / 100) << 16 | (g as u32 * fog / 100) << 8 | (r as u32 * fog / 100)
     }
 }
+// copied from rust std, '*' replaced with checked_mul()
+fn _checked_pow(mut base: usize, mut exp: usize) -> Option<usize> {
+    let mut acc = 1usize;
+
+    while exp > 1 {
+        if (exp & 1) == 1 {
+            acc = acc.checked_mul(base)?;
+        }
+        exp /= 2;
+        base = base.checked_mul(base)?;
+    }
+
+    if exp == 1 {
+        acc = acc.checked_mul(base)?;
+    }
+
+    Some(acc)
+}
+
+const D: usize = 20;
+#[derive(Clone)]
+pub struct Sequence {
+    b: u8,
+    d: [u8; D],
+    r: [f32; D],
+}
+
+impl Sequence {
+    /// Constructs a new `Sequence` for `base`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # use halton::Sequence;
+    /// let mut seq = Sequence::new(2);
+    ///
+    /// assert_eq!(Some(0.5), seq.next());
+    /// ```
+    #[inline]
+    pub fn new(base: u8) -> Self {
+        Sequence {
+            b: base,
+            d: [0; D],
+            r: [0.0; D],
+        }
+    }
+
+    fn pos(&self) -> Option<usize> {
+        self.d
+            .iter()
+            .zip(1..)
+            .map(|(v, i)| (*v as usize).checked_mul(i))
+            .try_fold(0usize, |acc, v| acc.checked_add(v?))
+    }
+
+    fn max(&self) -> Option<usize> {
+        _checked_pow(self.b as usize, D).map(|v| v - 1)
+    }
+
+    fn remaining(&self) -> Option<usize> {
+        Some(self.max()? - self.pos()?)
+    }
+}
+
+impl Iterator for Sequence {
+    type Item = f32;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut l = 0;
+
+        self.d[l] += 1;
+        if self.d[l] == self.b {
+            while self.d[l] == self.b {
+                self.d[l] = 0;
+                l += 1;
+                if l == D {
+                    return None;
+                }
+                self.d[l] += 1;
+            }
+            self.r[l - 1] = (f32::from(self.d[l]) + self.r[l]) / f32::from(self.b);
+            for i in (1..l).rev() {
+                self.r[i - 1] = self.r[i] / f32::from(self.b);
+            }
+            Some(self.r[0] / f32::from(self.b))
+        } else {
+            Some((f32::from(self.d[0]) + self.r[0]) / f32::from(self.b))
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if let Some(remaining) = self.remaining() {
+            (remaining, Some(remaining))
+        } else {
+            (0, None)
+        }
+    }
+
+    #[inline]
+    fn count(self) -> usize
+    where
+        Self: Sized,
+    {
+        if let Some(remaining) = self.remaining() {
+            remaining
+        } else {
+            panic!("attempt to add with overflow")
+        }
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<Self::Item>
+    where
+        Self: Sized,
+    {
+        if let Some(remaining) = self.remaining() {
+            self.nth(remaining - 1)
+        } else {
+            self.fold(None, |_, v| Some(v))
+        }
+    }
+
+    #[inline]
+    fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
+        if n > 50 {
+            if let Some(mut n) = self.pos().and_then(|p| n.checked_add(p)) {
+                self.d.iter_mut().for_each(|v| *v = 0);
+                self.r.iter_mut().for_each(|v| *v = 0.0);
+                let mut last = 0;
+                while n >= usize::from(self.b) {
+                    self.d[last] = n as u8 % self.b;
+                    last += 1;
+                    n /= usize::from(self.b);
+                }
+                self.d[last] = n as u8;
+                for i in (1..D).rev() {
+                    self.r[i - 1] = (f32::from(self.d[i]) + self.r[i]) / f32::from(self.b);
+                }
+                return self.next()
+            }
+        }
+        for x in self {
+            if n == 0 {
+                return Some(x);
+            }
+            n -= 1;
+        }
+        None
+    }
+}
